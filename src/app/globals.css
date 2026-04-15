@@ -1,130 +1,160 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-canvas-bg: var(--canvas-bg);
+  --color-canvas-node-bg: var(--canvas-node-bg);
+  --color-canvas-node-border: var(--canvas-node-border);
+  --color-canvas-node-border-selected: var(--canvas-node-border-selected);
+  --color-fg-default: var(--fg-default);
+  --color-fg-on-emphasis: var(--fg-on-emphasis);
+  --color-fg-muted: var(--color-fg-muted-raw);
+  --color-panel-bg: var(--surface-panel-bg);
+  --color-panel-bg-hover: var(--surface-panel-bg-hover);
+  --color-controls-hover: var(--canvas-controls-hover);
+  --color-controls-active: var(--canvas-controls-active);
+  --color-topnav-btn-border: var(--topnav-btn-border-raw);
+  --color-topnav-btn-bg: var(--topnav-btn-bg-raw);
+  --color-topnav-btn-hover: var(--topnav-btn-hover-bg-raw);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji";
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --canvas-bg: #141414;
+  --canvas-node-bg: #191e26;
+  --canvas-node-border: #363636;
+  --canvas-node-border-selected: #a8a8a8;
+  --fg-default: #f7f7f7;
+  --fg-on-emphasis: #fff;
+  --color-fg-muted-raw: #919191;
+  --surface-panel-bg: #171717;
+  --surface-panel-bg-hover: #1f1f1f;
+  --canvas-controls-hover: rgba(255, 255, 255, 0.08);
+  --canvas-controls-active: rgba(255, 255, 255, 0.12);
+  --topnav-btn-border-raw: #525252;
+  --topnav-btn-bg-raw: #171717;
+  --topnav-btn-hover-bg-raw: #1f1f1f;
+
+  --node-floating-offset: -28px;
+  --nav-height: 48px;
+  --nav-top: 16px;
+  --sidebar-btn-size: 36px;
+  --sidebar-btn-radius: 12px;
+  --node-border-radius: 12px;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+* {
+  box-sizing: border-box;
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background-color: var(--canvas-bg);
+  color: var(--fg-default);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+/* React Flow dark theme overrides */
+.react-flow.dark-theme {
+  --xy-background-color: var(--canvas-bg);
+  --xy-node-background-color: transparent;
+  --xy-node-border: none;
+  --xy-node-border-radius: 12px;
+  --xy-node-box-shadow: none;
+  --xy-node-color: var(--fg-default);
+  --xy-edge-stroke: rgba(255, 255, 255, 0.15);
+  --xy-edge-stroke-selected: rgba(255, 255, 255, 0.5);
+  --xy-edge-stroke-width: 2;
+  --xy-connectionline-stroke: rgba(255, 255, 255, 0.3);
+  --xy-connectionline-stroke-width: 2;
+  --xy-handle-background-color: var(--canvas-node-bg);
+  --xy-handle-border-color: var(--canvas-node-border);
+  --xy-selection-background-color: rgba(255, 255, 255, 0.05);
+  --xy-selection-border: 1px solid rgba(255, 255, 255, 0.15);
+  --xy-minimap-background-color: var(--surface-panel-bg);
+  --xy-controls-background-color: var(--surface-panel-bg);
+  --xy-controls-button-background-color: var(--surface-panel-bg);
+  --xy-controls-button-color: var(--fg-default);
+}
+
+.react-flow.dark-theme .react-flow__node {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.react-flow.dark-theme .react-flow__node.selected {
+  box-shadow: none;
+}
+
+.react-flow.dark-theme .react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--canvas-node-border);
+  background: var(--canvas-node-bg);
+  transition: border-color 0.15s;
+}
+
+.react-flow.dark-theme .react-flow__handle:hover {
+  border-color: var(--canvas-node-border-selected);
+}
+
+.react-flow.dark-theme .react-flow__edge-path {
+  transition: stroke 0.15s;
+}
+
+.react-flow__attribution {
+  display: none !important;
+}
+
+/* Multi-angle editor slider thumb */
+.angle-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.angle-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }

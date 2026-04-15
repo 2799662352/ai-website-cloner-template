@@ -1,9 +1,20 @@
+"use client";
+
+import { ReactFlowProvider } from "@xyflow/react";
+import { Navbar } from "@/components/canvas/Navbar";
+import { LeftSidebar } from "@/components/canvas/LeftSidebar";
+import { BottomBar } from "@/components/canvas/BottomBar";
+import { CanvasArea } from "@/components/canvas/CanvasArea";
+
 export default function Home() {
   return (
-    <main className="flex min-h-screen items-center justify-center">
-      <p className="text-muted-foreground">
-        Clone target not yet built. Run <code className="font-mono text-foreground">/clone-website</code> to start.
-      </p>
-    </main>
+    <ReactFlowProvider>
+      <div className="relative h-screen w-screen overflow-hidden bg-canvas-bg">
+        <Navbar />
+        <LeftSidebar />
+        <CanvasArea />
+        <BottomBar />
+      </div>
+    </ReactFlowProvider>
   );
 }
