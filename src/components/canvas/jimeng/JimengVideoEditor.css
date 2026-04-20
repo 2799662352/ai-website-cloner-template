@@ -1,0 +1,1284 @@
+.jm-editor-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: visible;
+}
+
+.jm-editor-container:focus-within {
+  border-color: #36b5f0;
+  box-shadow: 0 4px 20px rgba(54, 181, 240, 0.1);
+}
+
+.jm-editor-top {
+  display: block;
+  padding: 16px;
+  min-height: 180px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.jm-editor-top::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
+/* Media Stack */
+.jm-media-trigger {
+  float: left;
+  height: 90px;
+  margin: 0 16px 8px 0;
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+}
+
+.jm-media-trigger.has-media {
+  width: 72px;
+}
+
+.jm-media-trigger.has-media:hover,
+.jm-media-trigger.has-media.popover-open {
+  width: auto;
+  min-width: 140px;
+}
+
+.jm-empty-box {
+  width: 72px;
+  height: 90px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.jm-empty-box:hover {
+  border-color: #36b5f0;
+  background: #f0f9ff;
+}
+
+.jm-stack-container {
+  position: relative;
+  width: 72px;
+  height: 90px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+}
+
+.jm-media-trigger:hover .jm-stack-container,
+.jm-media-trigger.popover-open .jm-stack-container,
+.jm-media-trigger.is-dragging .jm-stack-container {
+  width: calc(88px * var(--media-count) + 80px);
+  max-width: none;
+}
+
+/* Collapsed: block pointer-events on invisible spread-out wrappers */
+.jm-sortable-wrap {
+  pointer-events: none;
+}
+.jm-sortable-wrap .jm-stack-layer {
+  pointer-events: auto;
+}
+.jm-media-trigger:hover .jm-sortable-wrap,
+.jm-media-trigger.popover-open .jm-sortable-wrap,
+.jm-media-trigger.is-dragging .jm-sortable-wrap {
+  pointer-events: auto;
+}
+
+.jm-stack-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 90px;
+  border-radius: 6px;
+  border: 2px solid #fff;
+  background: #f3f4f6;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.25s ease,
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: bottom center;
+  transform: translateX(calc(-1 * var(--expand-left, 0px))) translate(var(--stack-tx, 0px), var(--stack-ty, 0px)) rotate(var(--stack-rotate, 0deg));
+  will-change: transform;
+  contain: layout style paint;
+}
+
+.jm-stack-layer img, .jm-stack-layer video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Hover Expansion */
+.jm-media-trigger:hover .jm-stack-layer,
+.jm-media-trigger.popover-open .jm-stack-layer {
+  transform: rotate(var(--stack-rotate, 0deg));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Hover: lift + scale up (Jimeng pattern) */
+.jm-media-trigger:hover .jm-stack-layer:hover:not(:active),
+.jm-media-trigger.popover-open .jm-stack-layer:hover:not(:active) {
+  transform: rotate(var(--stack-rotate, 0deg)) translateY(-8px) scale(1.125);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  z-index: 30 !important;
+}
+
+/* Press: lift + scale down (Jimeng pattern) */
+.jm-media-trigger:hover .jm-stack-layer:active,
+.jm-media-trigger.popover-open .jm-stack-layer:active {
+  transform: rotate(var(--stack-rotate, 0deg)) translateY(-8px) scale(0.98);
+  z-index: 30 !important;
+}
+
+.jm-stack-plus {
+  position: absolute;
+  right: -8px;
+  bottom: -4px;
+  width: 24px;
+  height: 24px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  color: #6b7280;
+  font-size: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Delete button on expanded stack cards — top-left */
+.jm-stack-delete {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 22px;
+  height: 22px;
+  background: rgba(0, 0, 0, 0.72);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.18s ease, transform 0.18s ease, background 0.15s ease;
+  z-index: 2;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+.jm-stack-delete:hover {
+  background: rgba(239, 68, 68, 0.9);
+}
+
+.jm-media-trigger:hover .jm-stack-layer:hover .jm-stack-delete,
+.jm-media-trigger.popover-open .jm-stack-layer:hover .jm-stack-delete {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+
+.jm-stack-delete:hover {
+  background: rgba(220, 38, 38, 0.8);
+}
+
+/* Duration overlay on video/audio cards */
+.jm-stack-duration {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  line-height: 1.4;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Audio card layout */
+.jm-stack-audio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8eaed 0%, #d1d5db 100%);
+}
+
+.jm-stack-audio-label {
+  font-size: 10px;
+  color: #4b5563;
+  font-weight: 500;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* + card at end of expanded stack */
+.jm-stack-add-card {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 90px;
+  border-radius: 6px;
+  border: 1.5px dashed #d1d5db;
+  background: #fafafa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(0) scale(0.9) rotate(0deg) translate(0, 0);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1;
+}
+
+.jm-media-trigger:hover .jm-stack-add-card {
+  opacity: 1;
+  transform: translateX(var(--expand-left)) scale(1) rotate(0deg) translate(0, 0);
+}
+
+.jm-stack-add-card:hover {
+  border-color: #36b5f0;
+  background: #f0f9ff;
+  color: #36b5f0;
+}
+
+.jm-media-trigger:hover .jm-stack-plus,
+.jm-media-trigger.popover-open .jm-stack-plus {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.jm-stack-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  padding: 0 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* Media List Popover */
+.jm-media-list {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  align-items: center;
+  max-width: 400px;
+  overflow-x: auto;
+}
+
+/* Jimeng Rich Input */
+.jm-rich-input {
+  width: 100%;
+  min-height: 90px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.8;
+  color: #1f2937;
+  padding: 8px 0;
+  position: relative;
+  word-break: break-all;
+}
+
+.jm-rich-input:empty::before {
+  content: attr(data-placeholder);
+  color: #9ca3af;
+  pointer-events: none;
+  position: absolute;
+}
+
+.jm-token-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  padding: 2px 8px 2px 3px;
+  margin: 0 2px;
+  font-size: 13px;
+  color: #374151;
+  vertical-align: middle;
+  user-select: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  line-height: 1.4;
+}
+
+.jm-token-node:hover {
+  background: #e5e7eb;
+}
+
+.jm-token-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.jm-token-emoji {
+  font-size: 15px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+
+.jm-token-label {
+  white-space: nowrap;
+}
+
+.jm-fl-panel {
+  float: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 12px;
+  margin: 0 16px 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+  z-index: 1;
+}
+
+.jm-fl-slot {
+  width: 70px;
+  height: 80px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.jm-fl-slot:hover {
+  border-color: #36b5f0;
+  background: #f0f9ff;
+}
+
+.jm-fl-slot.filled {
+  border-style: solid;
+  border-color: #e5e7eb;
+}
+
+.jm-fl-slot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jm-fl-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: #9ca3af;
+  gap: 4px;
+}
+
+.jm-fl-add span {
+  font-size: 11px;
+}
+
+.jm-fl-arrow {
+  color: #9ca3af;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+}
+
+.jm-fl-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  background: rgba(0,0,0,0.5);
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  cursor: pointer;
+  border: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.jm-fl-slot:hover .jm-fl-remove {
+  opacity: 1;
+}
+
+.jm-media-list::-webkit-scrollbar {
+  height: 4px;
+}
+.jm-media-list::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.jm-media-add {
+  width: 64px;
+  height: 84px;
+  border-radius: 6px;
+  border: 1px dashed #d1d5db;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #9ca3af;
+  background: #fafafa;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.jm-media-add:hover {
+  background: #f0f9ff;
+  border-color: #36b5f0;
+  color: #36b5f0;
+}
+
+.jm-media-add span {
+  font-size: 11px;
+}
+
+/* Slim Add Menu (Popover content) */
+.jm-add-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  min-width: 120px;
+}
+
+.jm-add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: background 0.15s ease;
+}
+
+.jm-add-menu-item:hover {
+  background: #f3f4f6;
+  color: #0ea5e9;
+}
+
+.jm-add-menu-item .anticon {
+  font-size: 15px;
+}
+
+/* Text Area */
+.jm-textarea-wrapper {
+  display: block;
+  overflow: visible;
+  transition: min-height 0.15s ease-out;
+}
+
+.jm-textarea-wrapper .ant-input {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #1f2937;
+  background: transparent !important;
+  resize: none;
+  min-height: 120px;
+}
+
+.jm-textarea-wrapper .ant-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Bottom Bar */
+.jm-editor-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid #f3f4f6;
+  gap: 12px;
+}
+
+.jm-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.jm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+  height: 32px;
+}
+
+.jm-pill:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.jm-pill-blue {
+  color: #0ea5e9;
+  border-color: transparent;
+  font-weight: 500;
+}
+
+.jm-pill-blue:hover {
+  background: #f0f9ff;
+}
+
+.jm-pill-text {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jm-pill-arrow {
+  font-size: 10px;
+  color: #9ca3af;
+  transform: scale(0.8);
+}
+
+.jm-toggle-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.jm-at-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.jm-at-btn:hover {
+  border-color: #36b5f0;
+  color: #36b5f0;
+  background: #f0f9ff;
+}
+
+/* Bottom toolbar + pill */
+.jm-add-pill {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.jm-add-pill:hover {
+  border-color: #36b5f0;
+  color: #36b5f0;
+  background: #f0f9ff;
+}
+
+.jm-send-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #36b5f0;
+  color: #fff;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.jm-send-btn:hover {
+  background: #1da0e0;
+  transform: scale(1.05);
+}
+
+.jm-send-btn:active {
+  transform: scale(0.95);
+}
+
+.jm-send-btn.generating {
+  background: #f59e0b;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.jm-popover-menu {
+  min-width: 160px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.jm-menu-item {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.jm-menu-item:hover {
+  background: #f3f4f6;
+}
+
+.jm-menu-item.selected {
+  background: #f0f9ff;
+  color: #0ea5e9;
+}
+
+.jm-menu-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.jm-menu-item-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.jm-menu-item-desc {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Hide scrollbar for menus */
+.jm-popover-menu::-webkit-scrollbar {
+  width: 4px;
+}
+.jm-popover-menu::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jm-stack-layer,
+  .jm-stack-container,
+  .jm-stack-add-card,
+  .jm-stack-delete {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Lock expanded layout during drag */
+.jm-media-trigger.is-dragging .jm-stack-layer {
+  transform: rotate(var(--stack-rotate, 0deg));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.jm-media-trigger.is-dragging .jm-stack-add-card {
+  transform: translateX(var(--expand-left, 0px));
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Instant collapse on drop — no shrink animation */
+.jm-media-trigger.no-transition,
+.jm-media-trigger.no-transition .jm-stack-container,
+.jm-media-trigger.no-transition .jm-stack-layer,
+.jm-media-trigger.no-transition .jm-stack-add-card,
+.jm-media-trigger.no-transition .jm-stack-plus {
+  transition: none !important;
+}
+
+.jm-drag-overlay {
+  opacity: 0.85;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+  border-radius: 10px;
+  cursor: grabbing;
+  pointer-events: none;
+}
+
+.jm-media-item-duration {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 10px;
+  color: #fff;
+  background: rgba(0,0,0,0.6);
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.2;
+}
+
+.jm-editor-container.drag-over {
+  border-color: #36b5f0;
+  box-shadow: 0 0 0 3px rgba(54,181,240,0.12);
+  background: #f0f9ff;
+}
+
+/* ---- Chip Hover Preview Popover ---- */
+
+.chip-preview-popover {
+  z-index: 1050;
+  background: rgba(0, 0, 0, 0.85);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  pointer-events: none;
+  overflow: hidden;
+  max-width: 260px;
+}
+
+.chip-preview-popover.chip-preview-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.chip-preview-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.chip-preview-image {
+  max-width: 200px;
+  max-height: 200px;
+  object-fit: contain;
+  display: block;
+  border-radius: 6px 6px 0 0;
+}
+
+.chip-preview-video {
+  max-width: 240px;
+  max-height: 180px;
+  display: block;
+  border-radius: 6px 6px 0 0;
+  background: #000;
+}
+
+.chip-preview-duration {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 11px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-preview-label {
+  width: 100%;
+  padding: 6px 10px;
+  color: #e5e7eb;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-preview-audio-content {
+  padding: 12px 14px 4px;
+  min-width: 200px;
+}
+
+.chip-preview-play-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  transition: background 0.15s;
+}
+
+.chip-preview-play-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.chip-preview-progress-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.chip-preview-progress-fill {
+  height: 100%;
+  background: #36b5f0;
+  border-radius: 2px;
+  transition: width 0.2s linear;
+}
+
+.chip-preview-time {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════
+   Canvas node dark embed — polished overrides
+   Parent: .node-floating-ui has bg #262626
+   ═══════════════════════════════════════════════════ */
+
+/* --- Container reset --- */
+.node-floating-ui .jm-editor-container {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  margin-bottom: 0;
+}
+.node-floating-ui .jm-editor-container:focus-within {
+  border-color: transparent;
+  box-shadow: none;
+}
+.node-floating-ui .jm-editor-container.drag-over {
+  background: rgba(54, 181, 240, 0.04);
+}
+
+/* --- Text area region --- */
+.node-floating-ui .jm-editor-top {
+  padding: 14px 16px 8px;
+  min-height: auto;
+  max-height: 320px;
+}
+
+.node-floating-ui .jm-textarea-wrapper {
+  min-height: 56px !important;
+}
+
+.node-floating-ui .jm-rich-input {
+  color: rgba(255, 255, 255, 0.88);
+  min-height: 48px;
+  font-size: 14px;
+  line-height: 1.7;
+  padding: 4px 0;
+}
+
+.node-floating-ui .jm-rich-input:empty::before {
+  color: rgba(255, 255, 255, 0.28);
+  font-size: 14px;
+}
+
+/* --- Bottom bar --- */
+.node-floating-ui .jm-editor-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 8px 12px;
+  gap: 8px;
+}
+
+/* --- Control pills — glass morphism style --- */
+.node-floating-ui .jm-controls {
+  gap: 5px;
+}
+
+.node-floating-ui .jm-pill {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.7);
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  gap: 5px;
+  backdrop-filter: blur(6px);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.node-floating-ui .jm-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.92);
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.node-floating-ui .jm-pill:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.node-floating-ui .jm-pill-blue {
+  color: #5cc5f5;
+  border-color: rgba(54, 181, 240, 0.2);
+  background: rgba(54, 181, 240, 0.08);
+  font-weight: 500;
+}
+
+.node-floating-ui .jm-pill-blue:hover {
+  background: rgba(54, 181, 240, 0.14);
+  border-color: rgba(54, 181, 240, 0.3);
+}
+
+.node-floating-ui .jm-pill-static,
+.node-floating-ui .jm-pill-static:hover {
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+  background: rgba(54, 181, 240, 0.1);
+  border-color: rgba(54, 181, 240, 0.22);
+  color: #5cc5f5;
+}
+
+.node-floating-ui .jm-pill-text {
+  max-width: 90px;
+  font-size: 12px;
+}
+
+.node-floating-ui .jm-pill-arrow {
+  color: rgba(255, 255, 255, 0.25);
+  font-size: 9px;
+}
+
+/* --- Toggle pills (audio/web search) --- */
+.node-floating-ui .jm-toggle-pill {
+  color: rgba(255, 255, 255, 0.55);
+  height: 28px;
+  gap: 4px;
+  padding: 0 6px;
+  font-size: 12px;
+}
+
+.node-floating-ui .jm-toggle-pill .ant-switch {
+  min-width: 28px;
+  height: 16px;
+}
+
+/* --- @ button --- */
+.node-floating-ui .jm-at-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+}
+
+.node-floating-ui .jm-at-btn:hover {
+  background: rgba(54, 181, 240, 0.1);
+  border-color: rgba(54, 181, 240, 0.35);
+  color: #5cc5f5;
+}
+
+/* --- Add pill (+) --- */
+.node-floating-ui .jm-add-pill {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+}
+
+.node-floating-ui .jm-add-pill:hover {
+  background: rgba(54, 181, 240, 0.1);
+  border-color: rgba(54, 181, 240, 0.35);
+  color: #5cc5f5;
+}
+
+/* --- Send button — slightly smaller in node context --- */
+.node-floating-ui .jm-send-btn {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
+  background: linear-gradient(135deg, #36b5f0 0%, #2b9cd9 100%);
+  box-shadow: 0 2px 8px rgba(54, 181, 240, 0.25);
+}
+
+.node-floating-ui .jm-send-btn:hover {
+  background: linear-gradient(135deg, #47c0f7 0%, #36b5f0 100%);
+  box-shadow: 0 3px 12px rgba(54, 181, 240, 0.35);
+}
+
+/* --- Token chips inside editor --- */
+.node-floating-ui .jm-token-node {
+  background: rgba(54, 181, 240, 0.12);
+  border: 1px solid rgba(54, 181, 240, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.node-floating-ui .jm-token-label {
+  color: #7dd3fc;
+  font-size: 12px;
+}
+
+.node-floating-ui .jm-token-thumb {
+  border-radius: 3px;
+}
+
+/* --- Frame slots (首帧/尾帧) --- */
+.node-floating-ui .jm-fl-panel {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.node-floating-ui .jm-fl-slot {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+}
+
+.node-floating-ui .jm-fl-slot:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.node-floating-ui .jm-fl-slot.filled {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.node-floating-ui .jm-fl-add {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 12px;
+}
+
+.node-floating-ui .jm-fl-arrow {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.node-floating-ui .jm-fl-remove {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+/* --- Media trigger (multimodal_ref mode) --- */
+.node-floating-ui .jm-empty-box {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+
+.node-floating-ui .jm-empty-box:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.node-floating-ui .jm-stack-container {
+  background: transparent;
+}
+
+.node-floating-ui .jm-stack-add-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.node-floating-ui .jm-stack-plus {
+  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.node-floating-ui .jm-stack-plus:hover {
+  background: rgba(54, 181, 240, 0.12);
+  color: #5cc5f5;
+}
+
+/* --- Popover menus (model/mode/ratio selectors) --- */
+.jm-popover-menu {
+  background: #1e1e2e;
+  min-width: 180px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.jm-popover-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.jm-popover-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+}
+
+.jm-menu-item {
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.jm-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.jm-menu-item.selected {
+  background: rgba(54, 181, 240, 0.1);
+  color: #5cc5f5;
+}
+
+.jm-menu-item-title {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.jm-menu-item-desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  margin-top: 2px;
+}
+
+.jm-menu-item.disabled {
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+/* --- Ant Design dark theme overrides (inputs in popovers) --- */
+.node-floating-ui .ant-input-number,
+.ant-popover .ant-input-number {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.node-floating-ui .ant-input-number-group-addon,
+.ant-popover .ant-input-number-group-addon {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.node-floating-ui .ant-input-number-handler-wrap {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.node-floating-ui .ant-switch {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.node-floating-ui .ant-switch-checked {
+  background: #36b5f0;
+}
+
+/* --- Scrollbar for the whole editor --- */
+.node-floating-ui .jm-media-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* --- Add menu in dark context --- */
+.jm-add-menu {
+  background: #1e1e2e;
+}
+
+.jm-add-menu-item {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.jm-add-menu-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #5cc5f5;
+}
+
+/* --- Media add button dark --- */
+.node-floating-ui .jm-media-add {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.node-floating-ui .jm-media-add:hover {
+  background: rgba(54, 181, 240, 0.08);
+  border-color: rgba(54, 181, 240, 0.3);
+  color: #5cc5f5;
+}

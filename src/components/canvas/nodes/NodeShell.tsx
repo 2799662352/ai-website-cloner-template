@@ -47,13 +47,13 @@ function NodeShellInner({
           <span
             className="cursor-text truncate text-[13px]"
             title={name}
-            style={{ maxWidth: width - 80 }}
+            style={{ maxWidth: Math.max(80, width - 80) }}
           >
             {name}
           </span>
         </div>
         {resolution && (
-          <span className="shrink-0 whitespace-nowrap text-[11px] text-fg-muted/60">
+          <span className="shrink-0 whitespace-nowrap text-[12px] text-fg-muted/70">
             {resolution}
           </span>
         )}

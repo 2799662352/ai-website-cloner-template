@@ -1,10 +1,10 @@
 "use client";
 
 import { memo } from "react";
-import { Handle, Position, type NodeProps } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
 
 /** Minimal invisible connector node (1×1px). */
-function TempNodeInner(_props: NodeProps) {
+function TempNodeInner() {
   return (
     <div
       className="relative"

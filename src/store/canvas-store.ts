@@ -9,6 +9,7 @@ import {
   type Viewport,
 } from "@xyflow/react";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";
+import { seedNodes, seedEdges } from "@/data/seed-nodes";
 
 interface CanvasState {
   nodes: CanvasNode[];
@@ -24,6 +25,7 @@ interface CanvasState {
   setViewport: (vp: Viewport) => void;
   setSelectedNodeIds: (ids: string[]) => void;
   addNode: (node: CanvasNode) => void;
+  setNodes: (nodes: CanvasNode[]) => void;
   addEdgeDirectly: (edge: CanvasEdge) => void;
   updateNodeData: (id: string, data: Partial<Record<string, unknown>>) => void;
   deleteNode: (id: string) => void;
@@ -34,8 +36,8 @@ interface CanvasState {
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
-  nodes: [],
-  edges: [],
+  nodes: seedNodes,
+  edges: seedEdges,
   viewport: { x: 0, y: 0, zoom: 0.92 },
   selectedNodeIds: [],
   showMinimap: false,
@@ -65,6 +67,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   setSelectedNodeIds: (ids) => set({ selectedNodeIds: ids }),
 
   addNode: (node) => set({ nodes: [...get().nodes, node] }),
+
+  setNodes: (nodes) => set({ nodes }),
 
   addEdgeDirectly: (edge) => set({ edges: [...get().edges, edge] }),
 

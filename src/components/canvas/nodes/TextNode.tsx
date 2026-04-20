@@ -27,22 +27,27 @@ function TextNodeInner({ id, data, selected }: NodeProps & { data: TextNodeData 
   const textBody = hasContent ? formatTextContent(data.content) : "";
   const [prompt, setPrompt] = useState(data.params?.prompt ?? "");
   const contentRef = useRef<HTMLDivElement>(null);
-  const [bodyHeight, setBodyHeight] = useState(350);
+  const [measuredHeight, setMeasuredHeight] = useState(350);
+  const bodyHeight = hasContent ? measuredHeight : 350;
 
   useLayoutEffect(() => {
-    if (!hasContent) {
-      setBodyHeight(350);
-      return;
-    }
+    if (!hasContent) return;
     const el = contentRef.current;
     if (!el) return;
     const measure = () => {
-      setBodyHeight(Math.max(350, el.scrollHeight));
+      const next = Math.max(350, el.scrollHeight);
+      setMeasuredHeight((prev) => (prev === next ? prev : next));
     };
-    measure();
+    // Defer the initial measure so we're not updating state synchronously in
+    // the effect body (react-hooks/set-state-in-effect). The ResizeObserver
+    // drives subsequent updates via its async callback, which is allowed.
+    const raf = requestAnimationFrame(measure);
     const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [hasContent, textBody, data.content]);
 
   const floatingPanel = selected ? (

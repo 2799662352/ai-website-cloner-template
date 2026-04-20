@@ -21,7 +21,6 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useCanvasStore } from "@/store/canvas-store";
-import { seedNodes, seedEdges } from "@/data/seed-nodes";
 import { ImageNodeComponent } from "./nodes/ImageNode";
 import { VideoNodeComponent } from "./nodes/VideoNode";
 import { TextNodeComponent } from "./nodes/TextNode";
@@ -94,12 +93,6 @@ export function CanvasArea() {
       }
     | null
   >(null);
-
-  useEffect(() => {
-    if (nodes.length === 0) {
-      useCanvasStore.setState({ nodes: seedNodes, edges: seedEdges });
-    }
-  }, []);
 
   const onSelectionChange = useCallback(
     ({ nodes: selected }: { nodes: { id: string }[] }) => {
@@ -189,7 +182,12 @@ export function CanvasArea() {
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         connectionLineType={ConnectionLineType.Bezier}
-        connectionLineStyle={{ stroke: "rgba(255,255,255,0.3)", strokeWidth: 2 }}
+        connectionLineStyle={{
+          stroke: "rgba(54, 181, 240, 0.58)",
+          strokeWidth: 2.5,
+          strokeLinecap: "round",
+          strokeLinejoin: "round",
+        }}
         fitView
         fitViewOptions={{ padding: 0.2, maxZoom: 1.2 }}
         minZoom={0.05}
@@ -209,7 +207,7 @@ export function CanvasArea() {
           variant={BackgroundVariant.Dots}
           gap={20}
           size={1}
-          color="rgba(255,255,255,0.04)"
+          color="rgba(255,255,255,0.06)"
         />
         {showMinimap ? (
           <MiniMap
@@ -217,6 +215,9 @@ export function CanvasArea() {
             maskColor="rgba(0,0,0,0.45)"
             nodeStrokeColor="var(--fg-muted)"
             nodeColor="var(--canvas-node-border)"
+            nodeBorderRadius={2}
+            pannable
+            zoomable
           />
         ) : null}
         <ScreenToFlowBridge register={registerScreenToFlow} />

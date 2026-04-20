@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   IconShare,
   IconBell,
-  IconChevronDown,
   IconCrown,
   IconBolt,
 } from "./icons";

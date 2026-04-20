@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, memo } from "react";
 import * as THREE from "three";
+import { ORBIT_RADIUS, addOrbitGlobe } from "./orbitGlobeShared";
 
 type LightDirection = "left" | "top" | "right" | "front" | "bottom" | "back";
 
@@ -12,6 +13,7 @@ interface ThreeLightSceneProps {
   viewMode: "perspective" | "front";
   width?: number;
   height?: number;
+  imageUrl?: string;
 }
 
 const DIR_AZ_EL: Record<LightDirection, [number, number]> = {
@@ -23,38 +25,15 @@ const DIR_AZ_EL: Record<LightDirection, [number, number]> = {
   back: [270, 0],
 };
 
-const SHELL_VERT = `
-varying vec3 vNormal;
-varying vec3 vViewDir;
-void main() {
-  vNormal = -normalize(normalMatrix * normal);
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewDir = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const SHELL_FRAG = `
-uniform vec3 baseColor;
-uniform float shadowIntensity;
-uniform float centerAlpha;
-varying vec3 vNormal;
-varying vec3 vViewDir;
-void main() {
-  float nDotV = max(dot(vNormal, vViewDir), 0.0);
-  float edge = pow(1.0 - nDotV, 2.0);
-  vec3 col = mix(baseColor, vec3(0.0), edge * 0.5);
-  float a = centerAlpha + edge * shadowIntensity;
-  gl_FragColor = vec4(col, a);
-}
-`;
-
 const CONE_VERT = `
 varying vec2 vUv;
 varying float vHeight;
 void main() {
   vUv = uv;
-  vHeight = (position.y + 3.0) / 6.0;
+  // vHeight = 1 at the base (bulb side), 0 at the apex (subject side)
+  // so the fragment shader's falloff / smoothstep naturally concentrate
+  // brightness near the source and taper to transparency at the tip.
+  vHeight = (3.0 - position.y) / 6.0;
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `;
@@ -84,49 +63,6 @@ void main() {
 }
 `;
 
-const DOT_VERT = `
-varying vec3 vNormal;
-varying vec3 vViewDir;
-void main() {
-  vNormal = normalize(normalMatrix * normal);
-  vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  vViewDir = normalize(-mv.xyz);
-  gl_Position = projectionMatrix * mv;
-}
-`;
-
-const DOT_FRAG = `
-uniform vec3 dotColor;
-uniform float dotOpacity;
-varying vec3 vNormal;
-varying vec3 vViewDir;
-void main() {
-  float nDotV = max(dot(vNormal, vViewDir), 0.0);
-  float edge = pow(1.0 - nDotV, 1.5);
-  float a = dotOpacity * (0.5 + 0.5 * nDotV);
-  gl_FragColor = vec4(dotColor, a);
-}
-`;
-
-const R = 6.06;
-const SNAP_POINTS: [number, number][] = [];
-for (let el = -60; el <= 90; el += 30) {
-  const step = el === 90 || el === -90 ? 360 : 45;
-  for (let az = 0; az < 360; az += step) {
-    SNAP_POINTS.push([az, el]);
-  }
-}
-
-function azElToPos(az: number, el: number, r: number): THREE.Vector3 {
-  const a = (az * Math.PI) / 180;
-  const e = (el * Math.PI) / 180;
-  return new THREE.Vector3(
-    r * Math.cos(e) * Math.sin(a),
-    r * Math.sin(e),
-    r * Math.cos(e) * Math.cos(a),
-  );
-}
-
 function ThreeLightSceneInner({
   direction,
   brightness,
@@ -134,6 +70,7 @@ function ThreeLightSceneInner({
   viewMode,
   width = 200,
   height = 200,
+  imageUrl,
 }: ThreeLightSceneProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -145,7 +82,7 @@ function ThreeLightSceneInner({
     cone: THREE.Mesh;
     pointLight: THREE.PointLight;
     coneMat: THREE.ShaderMaterial;
-    shellMat: THREE.ShaderMaterial;
+    target: THREE.Mesh;
     frameId: number;
     tAz: number;
     tEl: number;
@@ -175,105 +112,60 @@ function ThreeLightSceneInner({
     camera.position.set(11, 8, 10);
     camera.lookAt(0, 0, 0);
 
-    const shellMat = new THREE.ShaderMaterial({
-      vertexShader: SHELL_VERT,
-      fragmentShader: SHELL_FRAG,
-      uniforms: {
-        baseColor: { value: new THREE.Color(0xcccccc) },
-        shadowIntensity: { value: 0.85 },
-        centerAlpha: { value: 0.08 },
-      },
-      transparent: true,
-      depthWrite: false,
-      side: THREE.BackSide,
-    });
-    const shell = new THREE.Mesh(new THREE.SphereGeometry(R, 64, 64), shellMat);
-    scene.add(shell);
+    addOrbitGlobe(scene, ORBIT_RADIUS);
 
-    const gridMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.06, transparent: true });
-    const eqGeo = new THREE.BufferGeometry();
-    const eqPts: THREE.Vector3[] = [];
-    for (let i = 0; i <= 128; i++) {
-      const a = (i / 128) * Math.PI * 2;
-      eqPts.push(new THREE.Vector3(R * Math.sin(a), 0, R * Math.cos(a)));
-    }
-    eqGeo.setFromPoints(eqPts);
-    scene.add(new THREE.Line(eqGeo, gridMat));
-
-    for (let elev = -60; elev <= 60; elev += 30) {
-      if (elev === 0) continue;
-      const pts: THREE.Vector3[] = [];
-      const r2 = R * Math.cos((elev * Math.PI) / 180);
-      const y = R * Math.sin((elev * Math.PI) / 180);
-      for (let i = 0; i <= 128; i++) {
-        const a = (i / 128) * Math.PI * 2;
-        pts.push(new THREE.Vector3(r2 * Math.sin(a), y, r2 * Math.cos(a)));
-      }
-      const g = new THREE.BufferGeometry().setFromPoints(pts);
-      scene.add(new THREE.Line(g, gridMat.clone()));
-    }
-
-    for (let az = 0; az < 360; az += 45) {
-      const pts: THREE.Vector3[] = [];
-      for (let i = 0; i <= 64; i++) {
-        const e = ((i / 64) * 180 - 90) * (Math.PI / 180);
-        const a = (az * Math.PI) / 180;
-        pts.push(new THREE.Vector3(R * Math.cos(e) * Math.sin(a), R * Math.sin(e), R * Math.cos(e) * Math.cos(a)));
-      }
-      const g = new THREE.BufferGeometry().setFromPoints(pts);
-      scene.add(new THREE.Line(g, gridMat.clone()));
-    }
-
-    SNAP_POINTS.forEach(([az, elv]) => {
-      const dotMat = new THREE.ShaderMaterial({
-        vertexShader: DOT_VERT,
-        fragmentShader: DOT_FRAG,
-        uniforms: {
-          dotColor: { value: new THREE.Color(0xffffff) },
-          dotOpacity: { value: 0.25 },
-        },
-        transparent: true,
-        depthWrite: false,
-      });
-      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.1, 12, 12), dotMat);
-      const p = azElToPos(az, elv, R);
-      dot.position.copy(p);
-      scene.add(dot);
-    });
-
-    const targetGeo = new THREE.BoxGeometry(2.2, 2.2, 0.08);
-    const targetMat = new THREE.MeshStandardMaterial({
-      color: 0x333333,
-      roughness: 0.5,
-      metalness: 0.05,
-    });
+    const TARGET_SIZE = 3.6;
+    const targetGeo = new THREE.PlaneGeometry(TARGET_SIZE, TARGET_SIZE);
+    const targetMat: THREE.Material = imageUrl
+      ? new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true })
+      : new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.5, metalness: 0.05, transparent: true });
     const target = new THREE.Mesh(targetGeo, targetMat);
     scene.add(target);
 
-    const iconCanvas = document.createElement("canvas");
-    iconCanvas.width = 64;
-    iconCanvas.height = 64;
-    const ctx = iconCanvas.getContext("2d")!;
-    ctx.strokeStyle = "rgba(255,255,255,0.25)";
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(10, 10, 44, 44);
-    ctx.beginPath();
-    ctx.arc(22, 22, 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(54, 38);
-    ctx.lineTo(38, 22);
-    ctx.lineTo(10, 54);
-    ctx.stroke();
-    const iconMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.0, 1.0),
-      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(iconCanvas), transparent: true }),
-    );
-    iconMesh.position.z = 0.05;
-    target.add(iconMesh);
+    if (imageUrl) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const aspect = img.width / img.height;
+        const tex = new THREE.Texture(img);
+        tex.needsUpdate = true;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        (targetMat as THREE.MeshBasicMaterial).map = tex;
+        (targetMat as THREE.MeshBasicMaterial).needsUpdate = true;
+        if (aspect > 1) {
+          target.scale.set(1, 1 / aspect, 1);
+        } else {
+          target.scale.set(aspect, 1, 1);
+        }
+      };
+      img.src = imageUrl;
+    } else {
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 64;
+      iconCanvas.height = 64;
+      const ctx = iconCanvas.getContext("2d")!;
+      ctx.strokeStyle = "rgba(255,255,255,0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(10, 10, 44, 44);
+      ctx.beginPath();
+      ctx.arc(22, 22, 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(54, 38);
+      ctx.lineTo(38, 22);
+      ctx.lineTo(10, 54);
+      ctx.stroke();
+      const iconMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.8, 1.8),
+        new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(iconCanvas), transparent: true }),
+      );
+      iconMesh.position.z = 0.05;
+      target.add(iconMesh);
+    }
 
-    const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.1, transparent: true });
-    target.add(new THREE.LineSegments(new THREE.EdgesGeometry(targetGeo), edgesMat));
+    const edgesMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.12, transparent: true });
+    const edgeGeo = new THREE.EdgesGeometry(new THREE.PlaneGeometry(TARGET_SIZE, TARGET_SIZE));
+    target.add(new THREE.LineSegments(edgeGeo, edgesMat));
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.15));
 
@@ -304,7 +196,6 @@ function ThreeLightSceneInner({
 
     const [initAz, initEl] = DIR_AZ_EL[direction];
 
-    let frameId = 0;
     const startTime = performance.now();
     const state = {
       renderer,
@@ -315,7 +206,7 @@ function ThreeLightSceneInner({
       cone,
       pointLight,
       coneMat,
-      shellMat,
+      target,
       frameId: 0,
       tAz: initAz,
       tEl: initEl,
@@ -331,7 +222,7 @@ function ThreeLightSceneInner({
     function updateLightPosition() {
       const az = (state.dispAz * Math.PI) / 180;
       const el = (state.dispEl * Math.PI) / 180;
-      const dist = R;
+      const dist = ORBIT_RADIUS;
       const x = dist * Math.cos(el) * Math.sin(az);
       const y = dist * Math.sin(el);
       const z = dist * Math.cos(el) * Math.cos(az);
@@ -341,7 +232,10 @@ function ThreeLightSceneInner({
 
       state.cone.position.set(x / 2, y / 2, z / 2);
       state.cone.lookAt(0, 0, 0);
-      state.cone.rotateX(Math.PI / 2);
+      // Apex points AT the subject (arrow convention: tip = direction of travel),
+      // base sits at the bulb side so the cone reads as "light radiating FROM the
+      // bulb TOWARDS the image".
+      state.cone.rotateX(-Math.PI / 2);
     }
 
     function updateCameraFromOrbit() {
@@ -369,6 +263,8 @@ function ThreeLightSceneInner({
       state.dispEl += (state.tEl - state.dispEl) * lerp;
       updateLightPosition();
 
+      state.target.lookAt(state.camera.position);
+
       renderer.render(scene, camera);
     };
     animate();
@@ -386,7 +282,7 @@ function ThreeLightSceneInner({
       const dy = e.clientY - state.dragStart.y;
       state.dragStart = { x: e.clientX, y: e.clientY };
       state.camAz -= dx * 0.5;
-      state.camEl = Math.max(-80, Math.min(80, state.camEl + dy * 0.5));
+      state.camEl = Math.max(-89, Math.min(89, state.camEl + dy * 0.5));
       updateCameraFromOrbit();
     };
     const onUp = (e: PointerEvent) => {

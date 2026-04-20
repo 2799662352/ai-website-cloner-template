@@ -11,12 +11,17 @@ const WAVEFORM_BARS = [40, 65, 35, 80, 55, 90, 45, 70, 50, 85, 38, 72, 48, 88, 4
 
 type AudioPanelTab = "upload" | "tts";
 
+const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
 function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeData }) {
   const hasAudio = Array.isArray(data.url) && data.url.length > 0 && data.url[0] !== "";
   const audioSrc = hasAudio ? data.url[0] : "";
   const [panelTab, setPanelTab] = useState<AudioPanelTab>("tts");
   const [ttsText, setTtsText] = useState(data.params?.prompt ?? "");
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const togglePlay = useCallback(() => {
@@ -28,6 +33,45 @@ function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeDat
       void a.play().catch(() => {});
     }
   }, [playing]);
+
+  const cycleSpeed = useCallback(() => {
+    setSpeed((prev) => {
+      const idx = SPEED_OPTIONS.indexOf(prev);
+      const next = SPEED_OPTIONS[(idx + 1) % SPEED_OPTIONS.length];
+      if (audioRef.current) audioRef.current.playbackRate = next;
+      return next;
+    });
+  }, []);
+
+  const fmt = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m.toString().padStart(2, "0")}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  const contextToolbar = selected && hasAudio ? (
+    <div
+      className="nodrag absolute left-1/2 z-30 -translate-x-1/2"
+      style={{ top: -62 }}
+    >
+      <div className="flex items-center gap-0 whitespace-nowrap rounded-xl border border-[var(--canvas-node-border)] bg-[var(--Surface-Panel-background)] px-1.5 py-0.5 shadow-lg">
+        <button
+          type="button"
+          onClick={cycleSpeed}
+          className="flex h-7 items-center justify-center rounded-lg px-2.5 text-[12px] font-medium tabular-nums text-[rgb(200,200,200)] transition-colors hover:bg-white/10 hover:text-white"
+        >
+          {speed}x
+        </button>
+        <button
+          type="button"
+          className="flex h-7 w-7 items-center justify-center rounded-lg text-[rgb(200,200,200)] transition-colors hover:bg-white/10 hover:text-white"
+          title="下载"
+        >
+          <DownloadIcon />
+        </button>
+      </div>
+    </div>
+  ) : undefined;
 
   const floatingPanel = selected ? (
     <div className="flex min-h-0 w-full flex-col gap-2 p-2">
@@ -102,6 +146,8 @@ function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeDat
     </div>
   ) : undefined;
 
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+
   return (
     <NodeShell
       nodeId={id}
@@ -109,8 +155,9 @@ function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeDat
       icon={<AudioIcon />}
       selected={selected}
       width={350}
-      height={350}
+      height={140}
       floatingPanel={floatingPanel}
+      contextToolbar={contextToolbar}
     >
       <div className="relative flex h-full flex-col">
         {hasAudio ? (
@@ -122,36 +169,54 @@ function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeDat
               onEnded={() => setPlaying(false)}
               onPlay={() => setPlaying(true)}
               onPause={() => setPlaying(false)}
+              onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+              onLoadedMetadata={() => setDuration(audioRef.current?.duration ?? 0)}
             />
-            <div className="flex h-full w-full flex-col justify-end px-4 pb-10 pt-6">
-              <div className="flex h-24 w-full items-end justify-center gap-0.5 px-2">
-                {WAVEFORM_BARS.map((h, i) => (
-                  <div
-                    key={i}
-                    className="w-1 rounded-sm bg-fg-muted/35"
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
+            <div className="flex h-full w-full flex-col justify-center px-4 py-3">
+              {/* Waveform with playhead */}
+              <div className="relative flex h-16 w-full items-center gap-[1.5px] px-1">
+                {WAVEFORM_BARS.map((barH, i) => {
+                  const barPct = (i / WAVEFORM_BARS.length) * 100;
+                  const played = barPct < progressPct;
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-sm transition-colors"
+                      style={{
+                        height: `${barH}%`,
+                        backgroundColor: played ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.2)",
+                      }}
+                    />
+                  );
+                })}
+                {/* Playhead line */}
+                <div
+                  className="pointer-events-none absolute top-0 h-full w-[2px] bg-red-500"
+                  style={{ left: `${progressPct}%` }}
+                />
               </div>
-            </div>
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="nodrag pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/55 text-white shadow-lg backdrop-blur-sm transition-colors hover:bg-black/70"
-                title={playing ? "暂停" : "播放"}
-              >
-                {playing ? (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                    <rect x="6" y="5" width="4" height="14" rx="1" />
-                    <rect x="14" y="5" width="4" height="14" rx="1" />
-                  </svg>
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="ml-0.5">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
+              {/* Time + play */}
+              <div className="mt-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={togglePlay}
+                  className="nodrag flex h-6 w-6 items-center justify-center text-white/70 transition-colors hover:text-white"
+                >
+                  {playing ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="5" width="4" height="14" rx="1" />
+                      <rect x="14" y="5" width="4" height="14" rx="1" />
+                    </svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
+                <span className="text-[11px] tabular-nums text-white/50">
+                  {fmt(currentTime)} / {fmt(duration || 3)}
+                </span>
+              </div>
             </div>
           </>
         ) : (
@@ -184,6 +249,16 @@ function AudioIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
       <path d="M9 18V5l12-2v13" />
       <circle cx="6" cy="18" r="3" />
       <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
   );
 }

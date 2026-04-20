@@ -21,7 +21,10 @@ export function BottomBar() {
 
   return (
     <div className="absolute bottom-4 left-3 z-30 flex items-center gap-0.5 rounded-xl bg-[var(--surface-panel-bg)] p-1 shadow-lg shadow-black/30">
-      <BottomButton title="整理画布 Alt+Shift+F">
+      <BottomButton
+        title="整理画布 Alt+Shift+F"
+        onClick={() => reactFlow.fitView({ padding: 0.2, duration: 400, maxZoom: 1.2 })}
+      >
         <IconLayout />
       </BottomButton>
       <BottomButton
@@ -49,7 +52,7 @@ export function BottomBar() {
         type="button"
         title="适应画布"
         onClick={() => reactFlow.fitView({ padding: 0.2, maxZoom: 1.2 })}
-        className="flex items-center justify-center rounded-lg px-1.5 text-[13px] leading-8 tabular-nums text-fg-muted transition-colors hover:bg-[var(--canvas-controls-hover)] hover:text-fg-default"
+        className="flex min-w-[48px] items-center justify-center rounded-lg px-1.5 text-[13px] leading-8 tabular-nums text-fg-muted transition-colors hover:bg-[var(--canvas-controls-hover)] hover:text-fg-default"
       >
         {zoom}%
       </button>

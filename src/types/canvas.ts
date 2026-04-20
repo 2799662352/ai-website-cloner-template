@@ -45,6 +45,7 @@ export interface ImageNodeData {
   contentHeight: number;
   generatorType?: "default" | "enhance";
   isStale?: boolean;
+  rotationMode?: boolean;
   params?: {
     prompt: string;
     model: string;

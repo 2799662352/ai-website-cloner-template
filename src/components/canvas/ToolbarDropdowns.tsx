@@ -34,9 +34,18 @@ function Dropdown({
 
   return (
     <div ref={ref} className="relative">
-      <div onClick={onToggle}>{trigger}</div>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="nodrag contents"
+      >
+        {trigger}
+      </button>
       {open && (
         <div
+          role="menu"
           className="absolute top-full z-50 mt-1"
           style={align === "center" ? { left: "50%", transform: "translateX(-50%)" } : { left: 0 }}
         >
@@ -84,15 +93,24 @@ function MenuItem({
   return (
     <button
       type="button"
+      role="menuitem"
       onClick={onClick}
       onMouseEnter={onHover}
-      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[13px] transition-colors ${
+      className={`group/menuitem flex w-full items-center gap-2.5 px-3 py-1.5 text-left text-[13px] transition-colors ${
         active
           ? "bg-white/10 text-[rgb(247,247,247)]"
-          : "text-[rgb(200,200,200)] hover:bg-white/5"
+          : "text-[rgb(200,200,200)] hover:bg-white/5 hover:text-[rgb(240,240,240)]"
       }`}
     >
-      {icon && <span className="flex h-4 w-4 shrink-0 items-center justify-center opacity-70">{icon}</span>}
+      {icon && (
+        <span
+          className={`flex h-4 w-4 shrink-0 items-center justify-center transition-opacity ${
+            active ? "opacity-100" : "opacity-70 group-hover/menuitem:opacity-100"
+          }`}
+        >
+          {icon}
+        </span>
+      )}
       <span className="flex-1">{label}</span>
       {hasSubmenu && (
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50">
@@ -111,20 +129,23 @@ export function HDDropdown({
   trigger,
   open,
   onToggle,
+  onSelect,
 }: {
   trigger: ReactNode;
   open: boolean;
   onToggle: () => void;
+  onSelect?: (item: string) => void;
 }) {
+  const pick = (label: string) => { onSelect?.(label); onToggle(); };
   return (
     <Dropdown trigger={trigger} open={open} onToggle={onToggle} align="center">
       <DropdownMenu minWidth={150}>
-        <MenuItem icon={<HDMenuIcon />} label="高清" active />
-        <MenuItem icon={<ExpandIcon />} label="扩图" />
-        <MenuItem icon={<RedrawIcon />} label="重绘" />
-        <MenuItem icon={<EraserIcon />} label="擦除" />
-        <MenuItem icon={<CutoutIcon />} label="抠图" />
-        <MenuItem icon={<CropIcon />} label="裁剪" />
+        <MenuItem icon={<HDMenuIcon />} label="高清" onClick={() => pick("hd")} />
+        <MenuItem icon={<ExpandIcon />} label="扩图" onClick={() => pick("expand")} />
+        <MenuItem icon={<RedrawIcon />} label="重绘" onClick={() => pick("redraw")} />
+        <MenuItem icon={<EraserIcon />} label="擦除" onClick={() => pick("erase")} />
+        <MenuItem icon={<CutoutIcon />} label="抠图" onClick={() => pick("cutout")} />
+        <MenuItem icon={<CropIcon />} label="裁剪" onClick={() => pick("crop")} />
       </DropdownMenu>
     </Dropdown>
   );
@@ -197,8 +218,8 @@ export function GridSplitDropdown({
             className="ml-1 rounded-xl border border-[var(--canvas-node-border)] bg-[var(--Surface-Panel-background)] p-3 shadow-xl"
             onMouseLeave={() => setShowCustom(false)}
           >
-            <div className="mb-2 text-[12px] text-[rgb(200,200,200)]">自定义宫格</div>
-            <CustomGridSelector />
+            <div className="mb-2 text-[13px] text-[rgb(200,200,200)]">自定义宫格</div>
+            <CustomGridSelector onPick={(rows, cols) => pick(`split-${rows}x${cols}`)} />
           </div>
         )}
       </div>
@@ -206,41 +227,43 @@ export function GridSplitDropdown({
   );
 }
 
-function CustomGridSelector() {
+function CustomGridSelector({ onPick }: { onPick?: (rows: number, cols: number) => void }) {
   const [hover, setHover] = useState<{ r: number; c: number } | null>(null);
   const maxR = 5, maxC = 5;
 
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex flex-col gap-0.5" onMouseLeave={() => setHover(null)}>
       {Array.from({ length: maxR }).map((_, r) => (
         <div key={r} className="flex gap-0.5">
           {Array.from({ length: maxC }).map((_, c) => {
             const active = hover ? r <= hover.r && c <= hover.c : false;
             return (
-              <div
+              <button
                 key={c}
-                className="cursor-pointer transition-colors"
+                type="button"
+                aria-label={`${r + 1} 行 ${c + 1} 列`}
+                className="nodrag cursor-pointer transition-colors"
                 style={{
                   width: 24,
                   height: 24,
                   borderRadius: 3,
+                  padding: 0,
                   backgroundColor: active
                     ? "rgba(59, 130, 246, 0.5)"
                     : "rgba(255, 255, 255, 0.08)",
                   border: "1px solid rgba(255,255,255,0.1)",
                 }}
                 onMouseEnter={() => setHover({ r, c })}
-                onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover({ r, c })}
+                onClick={() => onPick?.(r + 1, c + 1)}
               />
             );
           })}
         </div>
       ))}
-      {hover && (
-        <div className="mt-1 text-center text-[11px] text-[rgb(145,145,145)]">
-          {hover.r + 1} × {hover.c + 1}
-        </div>
-      )}
+      <div className="mt-1 text-center text-[12px] text-[rgb(160,160,160)] tabular-nums">
+        {hover ? `${hover.r + 1} × ${hover.c + 1}` : "悬停选择尺寸"}
+      </div>
     </div>
   );
 }

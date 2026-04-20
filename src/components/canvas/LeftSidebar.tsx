@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useReactFlow } from "@xyflow/react";
 import { useCanvasStore } from "@/store/canvas-store";
 import type { AnyNodeData, CanvasNode } from "@/types/canvas";
 import {

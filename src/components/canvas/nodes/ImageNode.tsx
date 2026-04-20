@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef, type ReactNode, type Ref } from "react";
+import { memo, useState, useCallback, useMemo, useRef, useEffect, useImperativeHandle, forwardRef, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
 import { type NodeProps, useReactFlow } from "@xyflow/react";
 import type { ImageNodeData } from "@/types/canvas";
@@ -17,6 +17,15 @@ import { NineGridDropdown, GridSplitDropdown, HDDropdown } from "../ToolbarDropd
 import { spawnOutputNode, spawnAnnotationNode, spawnRotationNode } from "@/lib/spawn-output-node";
 import { useCanvasStore } from "@/store/canvas-store";
 import JimengVideoEditor from "../jimeng/JimengVideoEditor";
+import { JimengRichInput, type JimengRichInputHandle } from "../jimeng/JimengRichInput";
+import type { MediaReference } from "../jimeng/mediaTypes";
+import { IMAGE_MODELS, IMAGE_RATIOS, IMAGE_QUALITIES, getRatioIconSize } from "../jimeng/imageConstants";
+import { Upload, Popover } from "antd";
+import {
+  CaretDownOutlined, SendOutlined, CloseOutlined,
+  AppstoreOutlined, BorderOutlined, VideoCameraOutlined,
+} from "@ant-design/icons";
+import "../jimeng/JimengVideoEditor.css";
 
 function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeData }) {
   const hasImage = data.url.length > 0 && data.url[0] !== "";
@@ -40,6 +49,55 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
   const showPanel = selected && hasImage && !isGenerating;
   const { getNode } = useReactFlow();
 
+  // Image panel state
+  const [imgModel, setImgModel] = useState(data.params?.model ?? 'lib-nano-pro');
+  const [imgRatio, setImgRatio] = useState(data.params?.settings?.ratio ?? '16:9');
+  const [imgQuality, setImgQuality] = useState(data.params?.settings?.quality ?? '4K');
+  const [imgCount, setImgCount] = useState(data.params?.count ?? 1);
+  const [refImages, setRefImages] = useState<Array<{ url: string; objectUrl?: string; nodeId?: string }>>(
+    () => (data.params?.imageList ?? []).map(r => ({ url: r.url, nodeId: r.nodeId }))
+  );
+  const [imgModelOpen, setImgModelOpen] = useState(false);
+  const [imgRatioOpen, setImgRatioOpen] = useState(false);
+  const [imgCountOpen, setImgCountOpen] = useState(false);
+  const [imgCameraOpen, setImgCameraOpen] = useState(false);
+  const richInputRef = useRef<JimengRichInputHandle | null>(null);
+
+  const imgModelLabel = IMAGE_MODELS.find(m => m.value === imgModel)?.label ?? imgModel;
+
+  const imgMediaRefs: MediaReference[] = useMemo(() =>
+    refImages.map((r, i) => ({
+      index: i + 1,
+      type: 'image' as const,
+      thumbnail: r.objectUrl || r.url,
+      url: r.objectUrl || r.url,
+    })),
+    [refImages]
+  );
+
+  const handleRefUpload = useCallback((file: File) => {
+    const objectUrl = URL.createObjectURL(file);
+    setRefImages(prev => {
+      if (prev.length >= 4) return prev;
+      return [...prev, { url: objectUrl, objectUrl }];
+    });
+    return false;
+  }, []);
+
+  const removeRef = useCallback((index: number) => {
+    setRefImages(prev => {
+      const item = prev[index];
+      if (item?.objectUrl) URL.revokeObjectURL(item.objectUrl);
+      return prev.filter((_, i) => i !== index);
+    });
+  }, []);
+
+  const DARK_POPOVER_STYLE: React.CSSProperties = {
+    padding: 0, borderRadius: 12, background: '#1e1e2e',
+    border: '1px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+  };
+
   const toggleEditor = (editor: "angle" | "light" | "annotate") => {
     setActiveEditor(activeEditor === editor ? null : editor);
     setOpenDropdown(null);
@@ -55,6 +113,13 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
     spawnOutputNode(id, node.position, w, kind, undefined, undefined, gridType);
     setActiveEditor(null);
   }, [id, getNode, w]);
+
+  const handleGenerate = useCallback(() => {
+    const node = getNode(id);
+    if (!node) return;
+    if (!prompt.trim() && refImages.length === 0) return;
+    spawnOutputNode(id, node.position, w, "expand");
+  }, [id, getNode, w, prompt, refImages.length]);
 
   const handleRotateSpawn = useCallback(() => {
     const node = getNode(id);
@@ -342,14 +407,14 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
   const controlPanel = showPanel ? (
     panelExpanded ? (
       /* ═══ Expanded panel — Jimeng Video Editor ═══ */
-      <div className="nodrag nowheel relative w-full" style={{ minHeight: 340 }}>
+      <div className="nodrag nowheel relative w-full">
         <button
           type="button"
           onClick={() => setPanelExpanded(false)}
-          className="absolute right-2 top-2 z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-white/5 hover:text-fg-default"
+          className="absolute right-2 top-1.5 z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-fg-muted/60 transition-colors hover:bg-white/5 hover:text-fg-default"
           title="收起"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="4 14 10 14 10 20" />
             <polyline points="20 10 14 10 14 4" />
             <line x1="14" y1="10" x2="21" y2="3" />
@@ -359,29 +424,49 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
         <JimengVideoEditor prompt={prompt} setPrompt={setPrompt} />
       </div>
     ) : (
-      /* ═══ Collapsed panel (default) ═══ */
-      <div className="relative flex min-h-0 w-full flex-col gap-2 p-3">
-        <div className="flex items-center gap-1.5">
+      /* ═══ Collapsed panel — Image Generation ═══ */
+      <div className="relative flex min-h-0 w-full flex-col gap-2.5 p-3.5">
+        {/* Row 1: Tool buttons + Reference images */}
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <PanelToolBtn icon={<StyleIcon />} label="风格" />
-            <PanelToolBtn icon={<MarkIcon />} label="标记" />
-            <PanelToolBtn icon={<FocusIcon />} label="聚焦" />
+            <PanelToolBtn icon={<StyleIcon />} label="风格" disabled title="风格库 · 即将推出" />
+            <PanelToolBtn icon={<MarkIcon />} label="标记" disabled title="区域标记 · 即将推出" />
+            <PanelToolBtn icon={<FocusIcon />} label="聚焦" disabled title="主体聚焦 · 即将推出" />
           </div>
-          <div className="flex items-center gap-1.5 pl-1">
-            {(data.params?.imageList ?? []).map((ref, i) => (
-              <RefBadge key={ref.nodeId || i} index={i + 1} url={ref.url} />
+          {refImages.length > 0 && <div className="h-6 w-px bg-white/[0.06]" />}
+          <div className="flex items-center gap-2">
+            {refImages.map((ref, i) => (
+              <div key={ref.nodeId || i} className="group relative">
+                <RefBadge index={i + 1} url={ref.objectUrl || ref.url} />
+                <button
+                  type="button"
+                  onClick={() => removeRef(i)}
+                  className="absolute -right-1 -top-1 z-10 flex h-4 w-4 items-center justify-center rounded-full bg-black/60 text-[8px] text-white opacity-0 transition-opacity group-hover:opacity-100"
+                ><CloseOutlined style={{ fontSize: 8 }} /></button>
+              </div>
             ))}
-            <AddRefBtn />
-            <AddRefBtn />
+            {refImages.length < 4 && (
+              <Upload accept="image/*" showUploadList={false} beforeUpload={handleRefUpload}>
+                <button
+                  type="button"
+                  className="nodrag group flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/[0.02] text-white/30 transition-all duration-150 hover:border-[#36b5f0]/50 hover:bg-[#36b5f0]/[0.06] hover:text-[#5cc5f5]"
+                  title="添加参考图"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="transition-transform duration-150 group-hover:rotate-90">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </button>
+              </Upload>
+            )}
           </div>
           <div className="flex-1" />
           <button
             type="button"
             onClick={() => setPanelExpanded(true)}
-            className="nodrag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-white/5 hover:text-fg-default"
-            title="展开"
+            className="nodrag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white/45 transition-all duration-150 hover:bg-white/[0.08] hover:text-white/90"
+            title="展开完整编辑器"
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 3 21 3 21 9" />
               <polyline points="9 21 3 21 3 15" />
               <line x1="21" y1="3" x2="14" y2="10" />
@@ -390,34 +475,195 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
           </button>
         </div>
 
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="描述你想要生成的画面内容，按/呼出指令，@引用素材"
-          className="nodrag h-[80px] w-full resize-none rounded-xl border border-[var(--canvas-node-border)] bg-transparent px-3 py-2.5 text-[14px] leading-relaxed text-fg-default placeholder:text-fg-muted/50 focus:border-[var(--canvas-node-border-selected)] focus:outline-none"
-        />
+        {/* Row 2: Rich Input */}
+        <div className="nodrag" style={{ minHeight: 60 }}>
+          <JimengRichInput
+            ref={richInputRef}
+            value={prompt}
+            onChange={setPrompt}
+            placeholder="描述你想要生成的画面内容，按/呼出指令，@引用素材"
+            mediaReferences={imgMediaRefs}
+          />
+        </div>
 
-        <div className="flex w-full items-center gap-0.5">
-          <div className="flex min-w-0 flex-1 items-center gap-0.5">
-            <PanelSelector icon={<GreenDot />} label={data.params?.model === "nebula-ultra" ? "Lib Nano Pro" : data.params?.model ?? "模型"} />
-            <PanelSelector icon={<RatioIcon />} label={`${data.params?.settings?.ratio ?? "16:9"} · ${data.params?.settings?.quality ?? "2K"}`} />
-            <PanelSelector icon={<CamCtrlIcon />} label="摄像机控制" />
+        {/* Row 3: Popover selectors + actions */}
+        <div className="flex w-full items-center gap-1.5 border-t border-white/[0.04] pt-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
+            {/* Model selector */}
+            <Popover open={imgModelOpen} onOpenChange={setImgModelOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={DARK_POPOVER_STYLE}
+              content={<div className="jm-popover-menu">{IMAGE_MODELS.map(m => (
+                <div key={m.value} className={`jm-menu-item ${m.value === imgModel ? 'selected' : ''}`} onClick={() => { setImgModel(m.value); setImgModelOpen(false); }}>
+                  <div className="jm-menu-item-title">{m.label}</div><div className="jm-menu-item-desc">{m.description}</div>
+                </div>
+              ))}</div>}
+            >
+              <div className="jm-pill"><GreenDot /><span className="jm-pill-text">{imgModelLabel}</span><CaretDownOutlined className="jm-pill-arrow" /></div>
+            </Popover>
+
+            {/* Ratio + Quality selector — matches LibTV grid layout */}
+            <Popover open={imgRatioOpen} onOpenChange={setImgRatioOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide
+              overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: '16px 16px 12px', minWidth: 280 }}
+              content={
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {/* Quality row */}
+                  <div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>分辨率</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                      {IMAGE_QUALITIES.map(q => (
+                        <button key={q.value} type="button" onClick={() => setImgQuality(q.value)}
+                          style={{
+                            height: 36, borderRadius: 8, border: '1px solid',
+                            borderColor: q.value === imgQuality ? 'rgba(54,181,240,0.5)' : 'rgba(255,255,255,0.08)',
+                            background: q.value === imgQuality ? 'rgba(54,181,240,0.12)' : 'rgba(255,255,255,0.04)',
+                            color: q.value === imgQuality ? '#5cc5f5' : 'rgba(255,255,255,0.7)',
+                            fontSize: 13, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
+                          }}
+                          onMouseEnter={e => { if (q.value !== imgQuality) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; } }}
+                          onMouseLeave={e => { if (q.value !== imgQuality) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; } }}
+                        >{q.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Ratio grid */}
+                  <div>
+                    <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', marginBottom: 8 }}>比例</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6 }}>
+                      {IMAGE_RATIOS.map(r => {
+                        const icon = getRatioIconSize(r.value);
+                        const selected = r.value === imgRatio;
+                        return (
+                          <button key={r.value} type="button" onClick={() => { setImgRatio(r.value); }}
+                            style={{
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              gap: 4, padding: '8px 2px', borderRadius: 8, border: '1px solid',
+                              borderColor: selected ? 'rgba(54,181,240,0.5)' : 'rgba(255,255,255,0.08)',
+                              background: selected ? 'rgba(54,181,240,0.12)' : 'rgba(255,255,255,0.04)',
+                              cursor: 'pointer', transition: 'all 0.15s', minHeight: 52,
+                            }}
+                            onMouseEnter={e => { if (!selected) { e.currentTarget.style.background = 'rgba(255,255,255,0.07)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'; } }}
+                            onMouseLeave={e => { if (!selected) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; } }}
+                          >
+                            <div style={{
+                              width: icon.w, height: icon.h,
+                              border: `1.5px solid ${selected ? '#5cc5f5' : 'rgba(255,255,255,0.35)'}`,
+                              borderRadius: 2,
+                            }} />
+                            <span style={{
+                              fontSize: 11, fontWeight: selected ? 600 : 400,
+                              color: selected ? '#5cc5f5' : 'rgba(255,255,255,0.55)',
+                            }}>{r.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <div className="jm-pill"><BorderOutlined style={{ fontSize: 13 }} /><span className="jm-pill-text">{imgRatio === 'auto' ? '自适应' : imgRatio} · {imgQuality}</span><CaretDownOutlined className="jm-pill-arrow" /></div>
+            </Popover>
+
+            {/* Camera Control selector */}
+            <Popover
+              open={imgCameraOpen}
+              onOpenChange={setImgCameraOpen}
+              trigger="click"
+              placement="topLeft"
+              arrow={false}
+              destroyTooltipOnHide
+              overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: 0, minWidth: 240, overflow: "hidden" }}
+              content={
+                <div style={{ fontSize: 13 }}>
+                  <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
+                      <VideoCameraOutlined style={{ color: "#5cc5f5", fontSize: 14 }} />
+                      <span>摄像机控制</span>
+                    </div>
+                    <div style={{ marginTop: 3, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>Camera • Lens • Focal • Aperture</div>
+                  </div>
+                  <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 9 }}>
+                    {[
+                      { label: "相机", value: "Panavision DXL2" },
+                      { label: "镜头", value: "ARRI Signature Prime" },
+                      { label: "焦距", value: "35mm" },
+                      { label: "光圈", value: "f/4" },
+                    ].map(row => (
+                      <div key={row.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+                        <span style={{ color: "rgba(255,255,255,0.55)" }}>{row.label}</span>
+                        <span style={{ color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>{row.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ padding: "8px 14px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.02)", fontSize: 11, color: "rgba(255,255,255,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span>展开完整编辑器调节参数</span>
+                  </div>
+                </div>
+              }
+            >
+              <div className="jm-pill"><VideoCameraOutlined style={{ fontSize: 12 }} /><span className="jm-pill-text">摄像机控制</span><CaretDownOutlined className="jm-pill-arrow" /></div>
+            </Popover>
           </div>
+
           <div className="flex shrink-0 items-center gap-0.5">
             <PanelIconBtn title="翻译提示词"><IconTranslate className="h-3.5 w-3.5" /></PanelIconBtn>
-            <PanelIconBtn title="链接"><LinkIcon /></PanelIconBtn>
-            <PanelSelector label={`${data.params?.count ?? 1}张`} compact />
-            <span className="flex items-center gap-0.5 px-1 text-[12px] tabular-nums text-fg-muted">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 10 10-12h-9l1-10z" /></svg>
+            <PanelIconBtn title="联网搜索"><WebSearchIcon /></PanelIconBtn>
+
+            {/* Count selector */}
+            <Popover open={imgCountOpen} onOpenChange={setImgCountOpen} trigger="click" placement="top" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: '6px' }}
+              content={<div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, minWidth: 120 }}>
+                {[1,2,3,4,5,6,7,8,9].map(n => (
+                  <button key={n} type="button" onClick={() => { setImgCount(n); setImgCountOpen(false); }}
+                    style={{
+                      width: 36, height: 32, borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 500,
+                      background: n === imgCount ? 'rgba(54,181,240,0.2)' : 'rgba(255,255,255,0.04)',
+                      color: n === imgCount ? '#5cc5f5' : 'rgba(255,255,255,0.65)',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => { if (n !== imgCount) { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; } }}
+                    onMouseLeave={e => { if (n !== imgCount) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; } }}
+                  >{n}</button>
+                ))}
+              </div>}
+            >
+              <div className="jm-pill" style={{ padding: '0 8px' }}><span>{imgCount}张</span><CaretDownOutlined className="jm-pill-arrow" /></div>
+            </Popover>
+
+            <span
+              className="flex items-center gap-0.5 rounded-md px-1.5 py-1 text-[11px] font-medium tabular-nums text-white/55"
+              title="算力消耗"
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400/80">
+                <path d="M13 2L3 14h9l-1 10 10-12h-9l1-10z" />
+              </svg>
               26
             </span>
-            <button
-              type="button"
-              className="nodrag flex h-7 w-7 items-center justify-center rounded-full bg-blue-500 text-white transition-colors hover:bg-blue-600"
-              title="生成"
-            >
-              <IconSend className="h-3.5 w-3.5" />
-            </button>
+
+            {(() => {
+              const canGenerate = prompt.trim().length > 0 || refImages.length > 0;
+              return (
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!canGenerate}
+                  aria-label="生成图片"
+                  className="nodrag flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white transition-all duration-150 enabled:shadow-[0_2px_10px_rgba(54,181,240,0.35)] enabled:hover:shadow-[0_3px_14px_rgba(54,181,240,0.5)] enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                  style={{
+                    background: canGenerate
+                      ? "linear-gradient(135deg, #36b5f0 0%, #2b9cd9 100%)"
+                      : "rgba(255,255,255,0.08)",
+                  }}
+                  title={canGenerate ? "生成" : "请输入提示词或添加参考图"}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5" />
+                    <polyline points="5 12 12 5 19 12" />
+                  </svg>
+                </button>
+              );
+            })()}
           </div>
         </div>
       </div>
@@ -474,7 +720,13 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
               tool={annotTool}
             />
           )}
-          <button className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={handleDownload}
+            aria-label="下载图片"
+            title="下载"
+            className="nodrag absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-600 text-white opacity-0 shadow-md transition-all duration-150 hover:bg-emerald-500 active:scale-95 group-hover:opacity-100"
+          >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
             </svg>
@@ -535,7 +787,7 @@ function ImagePreviewModal({
 }) {
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const isDragging = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -555,20 +807,20 @@ function ImagePreviewModal({
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    isDragging.current = true;
+    setIsDragging(true);
     dragStart.current = { x: e.clientX - position.x, y: e.clientY - position.y };
   }, [position]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging.current) return;
+    if (!isDragging) return;
     setPosition({
       x: e.clientX - dragStart.current.x,
       y: e.clientY - dragStart.current.y,
     });
-  }, []);
+  }, [isDragging]);
 
   const handleMouseUp = useCallback(() => {
-    isDragging.current = false;
+    setIsDragging(false);
   }, []);
 
   const handleReset = useCallback(() => {
@@ -669,7 +921,7 @@ function ImagePreviewModal({
         className="relative flex flex-1 items-center justify-center overflow-hidden"
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
-        style={{ cursor: isDragging.current ? "grabbing" : "grab" }}
+        style={{ cursor: isDragging ? "grabbing" : "grab" }}
       >
         <img
           src={url}
@@ -679,7 +931,7 @@ function ImagePreviewModal({
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transformOrigin: "center center",
-            transition: isDragging.current ? "none" : "transform 0.1s ease-out",
+            transition: isDragging ? "none" : "transform 0.1s ease-out",
           }}
         />
       </div>
@@ -1026,14 +1278,37 @@ function AnnotToolBtn({ icon, active, onClick, title }: { icon: ReactNode; activ
    Floating Panel components
    ═══════════════════════════════════════════════════════ */
 
-function PanelToolBtn({ icon, label }: { icon: ReactNode; label: string }) {
+function PanelToolBtn({
+  icon,
+  label,
+  onClick,
+  disabled,
+  title,
+  active,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+  title?: string;
+  active?: boolean;
+}) {
   return (
     <button
       type="button"
-      className="nodrag flex items-center gap-1.5 rounded-lg border border-[var(--canvas-node-border)] px-2.5 py-1.5 text-fg-muted transition-colors hover:border-[var(--canvas-node-border-selected)] hover:text-fg-default"
+      onClick={onClick}
+      disabled={disabled}
+      title={title ?? (disabled ? "功能即将推出" : undefined)}
+      aria-label={label}
+      aria-disabled={disabled}
+      className={`nodrag group flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-medium transition-all duration-150 ${
+        active
+          ? "border-[#36b5f0]/40 bg-[#36b5f0]/[0.08] text-[#5cc5f5]"
+          : "border-white/[0.08] bg-white/[0.03] text-white/65 enabled:hover:border-white/15 enabled:hover:bg-white/[0.07] enabled:hover:text-white/90"
+      } disabled:cursor-not-allowed disabled:opacity-45`}
     >
-      <span className="flex h-4 w-4 items-center justify-center">{icon}</span>
-      <span className="text-[13px] leading-none">{label}</span>
+      <span className="flex h-3.5 w-3.5 items-center justify-center transition-transform group-enabled:group-hover:scale-110">{icon}</span>
+      <span className="leading-none">{label}</span>
     </button>
   );
 }
@@ -1041,17 +1316,23 @@ function PanelToolBtn({ icon, label }: { icon: ReactNode; label: string }) {
 function RefBadge({ index, url }: { index: number; url?: string }) {
   const hasImg = url && url !== "";
   return (
-    <div className="relative">
-      <div className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border ${hasImg ? "border-[var(--canvas-node-border)]" : "border-dashed border-[var(--canvas-node-border)]"} bg-white/5`}>
+    <div className="group/ref relative">
+      <div
+        className={`flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border transition-all duration-200 ${
+          hasImg
+            ? "border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.25)] group-hover/ref:-translate-y-0.5 group-hover/ref:border-[#36b5f0]/40 group-hover/ref:shadow-[0_4px_14px_rgba(54,181,240,0.25)]"
+            : "border-dashed border-white/10 bg-white/[0.02] group-hover/ref:border-white/20"
+        }`}
+      >
         {hasImg ? (
-          <img src={url} alt="" className="h-full w-full object-cover" draggable={false} />
+          <img src={url} alt="" className="h-full w-full object-cover transition-transform duration-200 group-hover/ref:scale-105" draggable={false} />
         ) : (
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-fg-muted/40">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-white/30">
             <path d="M12 5v14M5 12h14" />
           </svg>
         )}
       </div>
-      <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-500 px-0.5 text-[9px] font-bold text-white">
+      <span className="pointer-events-none absolute -right-1 -top-1 flex h-[14px] min-w-[14px] items-center justify-center rounded-full border border-[#1a1a1a] bg-[#36b5f0] px-[3px] text-[9px] font-semibold tabular-nums text-white shadow-[0_1px_3px_rgba(0,0,0,0.4)] transition-transform duration-200 group-hover/ref:scale-110">
         {index}
       </span>
     </div>
@@ -1129,7 +1410,7 @@ function PanelIconBtn({ title, children }: { title: string; children: ReactNode 
     <button
       type="button"
       title={title}
-      className="nodrag flex h-7 w-7 items-center justify-center text-fg-muted transition-colors hover:text-fg-default"
+      className="nodrag flex h-7 w-7 items-center justify-center rounded-md text-white/50 transition-all duration-150 hover:bg-white/[0.08] hover:text-white/90"
     >
       {children}
     </button>
@@ -1212,11 +1493,10 @@ function AnnotateIcon() {
 
 function RotateIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12.5 6A5 5 0 0 0 3.5 5" />
-      <polyline points="12.5 2.5 12.5 6 9 6" />
-      <path d="M3.5 10a5 5 0 0 0 9 1" />
-      <polyline points="3.5 13.5 3.5 10 7 10" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="10" width="10" height="10" rx="1.5" />
+      <path d="M4 7 A 8 8 0 0 1 19 5" />
+      <polyline points="19 2 19 5 16 5" />
     </svg>
   );
 }
@@ -1386,11 +1666,12 @@ function CamCtrlIcon() {
   );
 }
 
-function LinkIcon() {
+function WebSearchIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 4 9 14 14 0 0 1-4 9 14 14 0 0 1-4-9 14 14 0 0 1 4-9z" />
     </svg>
   );
 }
