@@ -3,9 +3,11 @@ import {
   applyNodeChanges,
   applyEdgeChanges,
   addEdge,
+  reconnectEdge as rfReconnectEdge,
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type OnReconnect,
   type Viewport,
 } from "@xyflow/react";
 import type { CanvasNode, CanvasEdge } from "@/types/canvas";
@@ -30,6 +32,7 @@ interface CanvasState {
   updateNodeData: (id: string, data: Partial<Record<string, unknown>>) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
+  reconnectEdge: OnReconnect;
   toggleMinimap: () => void;
   toggleSnapToGrid: () => void;
   duplicateNode: (id: string) => void;
@@ -86,6 +89,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     }),
 
   deleteEdge: (id) => set({ edges: get().edges.filter((e) => e.id !== id) }),
+
+  reconnectEdge: (oldEdge, newConnection) => {
+    set({ edges: rfReconnectEdge(oldEdge, newConnection, get().edges) });
+  },
 
   toggleMinimap: () => set({ showMinimap: !get().showMinimap }),
 

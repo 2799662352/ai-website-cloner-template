@@ -118,17 +118,93 @@ body {
   box-shadow: none;
 }
 
-.react-flow.dark-theme .react-flow__handle {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid var(--canvas-node-border);
-  background: var(--canvas-node-bg);
-  transition: border-color 0.15s;
+/* -------------------------------------------------------------------------
+   LibTV-style "+" handle
+   -------------------------------------------------------------------------
+   The React Flow <Handle> element itself is 0x0 transparent (set via inline
+   style in NodeShell.tsx) — it only carries connection logic. The visible
+   plus-button lives in the child `.canvas-plus-handle__btn`, floating 25px
+   outside the node edge. It fades in when the parent node is hovered,
+   selected, or the user is dragging a connection.
+   ------------------------------------------------------------------------- */
+
+:root {
+  --canvas-handle-bg: #1c1c1c;
+  --canvas-handle-icon: #c8c8c8;
+  --canvas-handle-bg-hover: rgba(54, 181, 240, 0.18);
+  --canvas-handle-icon-hover: rgb(54, 181, 240);
 }
 
-.react-flow.dark-theme .react-flow__handle:hover {
-  border-color: var(--canvas-node-border-selected);
+/* The plus-button wrapper — hidden by default */
+.canvas-plus-handle__btn {
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+  will-change: opacity, transform;
+}
+
+/* Reveal the "+" when the parent node is hovered / selected,
+   or while a connection is being dragged. */
+.react-flow__node:hover .canvas-plus-handle__btn,
+.react-flow__node.selected .canvas-plus-handle__btn,
+.react-flow__handle.connectingfrom .canvas-plus-handle__btn,
+.react-flow__handle.connectingto .canvas-plus-handle__btn,
+.react-flow__handle.valid .canvas-plus-handle__btn,
+.react-flow.connecting .canvas-plus-handle__btn {
+  opacity: 1;
+}
+
+/* SVG sub-parts — tinted via CSS custom properties so we can override on hover */
+.canvas-plus-handle__bg {
+  fill: var(--canvas-handle-bg);
+  transition: fill 0.15s ease;
+}
+.canvas-plus-handle__ring {
+  stroke: var(--canvas-handle-icon);
+  transition: stroke 0.15s ease;
+}
+.canvas-plus-handle__icon {
+  stroke: var(--canvas-handle-icon);
+  transition: stroke 0.15s ease;
+}
+
+/* Direct hover on the "+" button itself — highlight cyan + subtle glow */
+.canvas-plus-handle:hover .canvas-plus-handle__btn,
+.canvas-plus-handle__btn:hover {
+  filter: drop-shadow(0 0 4px rgba(54, 181, 240, 0.55));
+}
+.canvas-plus-handle:hover .canvas-plus-handle__bg,
+.canvas-plus-handle__btn:hover .canvas-plus-handle__bg {
+  fill: var(--canvas-handle-bg-hover);
+}
+.canvas-plus-handle:hover .canvas-plus-handle__ring,
+.canvas-plus-handle:hover .canvas-plus-handle__icon,
+.canvas-plus-handle__btn:hover .canvas-plus-handle__ring,
+.canvas-plus-handle__btn:hover .canvas-plus-handle__icon {
+  stroke: var(--canvas-handle-icon-hover);
+}
+
+/* Active-connection highlight (React Flow adds .valid / .connecting) */
+.canvas-plus-handle.valid .canvas-plus-handle__bg,
+.canvas-plus-handle.connecting .canvas-plus-handle__bg {
+  fill: var(--canvas-handle-bg-hover);
+}
+.canvas-plus-handle.valid .canvas-plus-handle__ring,
+.canvas-plus-handle.connecting .canvas-plus-handle__ring,
+.canvas-plus-handle.valid .canvas-plus-handle__icon,
+.canvas-plus-handle.connecting .canvas-plus-handle__icon {
+  stroke: var(--canvas-handle-icon-hover);
+}
+.canvas-plus-handle.valid .canvas-plus-handle__btn,
+.canvas-plus-handle.connecting .canvas-plus-handle__btn {
+  filter: drop-shadow(0 0 6px rgba(54, 181, 240, 0.6));
+  opacity: 1;
+}
+
+/* Give the cursor a hint that the "+" is grabbable to start a connection */
+.canvas-plus-handle__btn {
+  cursor: crosshair;
 }
 
 .react-flow.dark-theme .react-flow__edge-path {

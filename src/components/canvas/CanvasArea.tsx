@@ -69,11 +69,14 @@ export function CanvasArea() {
     onNodesChange,
     onEdgesChange,
     onConnect,
+    reconnectEdge,
     setViewport,
     setSelectedNodeIds,
     showMinimap,
     snapToGrid,
   } = useCanvasStore();
+
+  const reconnectSuccessful = useRef(false);
 
   const [contextMenu, setContextMenu] = useState<
     | {
@@ -145,6 +148,19 @@ export function CanvasArea() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        edgesReconnectable
+        onReconnectStart={() => {
+          reconnectSuccessful.current = false;
+        }}
+        onReconnect={(oldEdge, newConnection) => {
+          reconnectSuccessful.current = true;
+          reconnectEdge(oldEdge, newConnection);
+        }}
+        onReconnectEnd={(_event, edge) => {
+          if (!reconnectSuccessful.current) {
+            useCanvasStore.getState().deleteEdge(edge.id);
+          }
+        }}
         onSelectionChange={onSelectionChange}
         onMove={(_e, vp) => setViewport(vp)}
         onMoveEnd={(_e, vp) => setViewport(vp)}

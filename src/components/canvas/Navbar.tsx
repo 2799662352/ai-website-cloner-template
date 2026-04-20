@@ -108,13 +108,13 @@ function SaleBadge() {
 
 function LogoIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-      <rect width="24" height="24" rx="6" fill="#2563eb" />
-      <path
-        d="M7 8h4v8H7V8zm6 0h4v8h-4V8z"
-        fill="white"
-        fillOpacity="0.9"
-      />
-    </svg>
+    <img
+      src="/miau-cat-logo.png"
+      alt="Miau"
+      width={24}
+      height={24}
+      className="object-contain"
+      draggable={false}
+    />
   );
 }

@@ -4,6 +4,82 @@ import { memo, type ReactNode } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { IconImage } from "../icons";
 
+/**
+ * LibTV-style "+" handle — a 20x20 SVG plus-button floating 25px outside the
+ * node edge. The underlying React Flow <Handle> is kept 0x0 and transparent so
+ * it only carries the connection logic; the SVG is rendered as its child so
+ * pointer-downs on the "+" start a connection just like on a native handle.
+ *
+ * Visibility is controlled entirely from globals.css:
+ *   opacity: 0 by default,
+ *   opacity: 1 when the parent node is hovered / selected / connecting.
+ */
+function PlusHandle({
+  side,
+  type,
+  id,
+}: {
+  side: "left" | "right";
+  type: "source" | "target";
+  id: string;
+}) {
+  const position = side === "left" ? Position.Left : Position.Right;
+  const offset = side === "left" ? -25 : 25;
+  return (
+    <Handle
+      type={type}
+      position={position}
+      id={id}
+      className="canvas-plus-handle"
+      style={{
+        width: 0,
+        height: 0,
+        minWidth: 0,
+        minHeight: 0,
+        padding: 0,
+        background: "transparent",
+        border: "none",
+        borderRadius: 0,
+        overflow: "visible",
+        pointerEvents: "auto",
+        zIndex: 20,
+      }}
+    >
+      <div
+        className="canvas-plus-handle__btn"
+        style={{
+          width: 20,
+          height: 20,
+          pointerEvents: "auto",
+          transform: `translate(${offset}px, 0) translate(-50%, -50%) scale(1)`,
+          transformOrigin: "center center",
+          position: "absolute",
+          left: 0,
+          top: 0,
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="9.35" className="canvas-plus-handle__bg" />
+          <circle
+            cx="10"
+            cy="10"
+            r="9.35"
+            className="canvas-plus-handle__ring"
+            fill="none"
+            strokeWidth={1.2}
+          />
+          <path
+            d="M10 6.5v7M6.5 10h7"
+            className="canvas-plus-handle__icon"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
+    </Handle>
+  );
+}
+
 interface NodeShellProps {
   nodeId: string;
   name: string;
@@ -64,22 +140,7 @@ function NodeShellInner({
         className="group overflow-visible"
         style={{ width, height, position: "relative" }}
       >
-        <Handle
-          type="target"
-          position={Position.Left}
-          id="target"
-          style={{
-            width: 0,
-            height: 0,
-            minWidth: 0,
-            minHeight: 0,
-            padding: 0,
-            background: "transparent",
-            borderWidth: 0,
-            left: 0,
-            top: "50%",
-          }}
-        />
+        <PlusHandle side="left" type="target" id="target" />
 
         {/* Inner card with border + selection outline */}
         <div
@@ -95,22 +156,7 @@ function NodeShellInner({
           {children}
         </div>
 
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="source"
-          style={{
-            width: 0,
-            height: 0,
-            minWidth: 0,
-            minHeight: 0,
-            padding: 0,
-            background: "transparent",
-            borderWidth: 0,
-            right: 0,
-            top: "50%",
-          }}
-        />
+        <PlusHandle side="right" type="source" id="source" />
       </div>
 
       {/* Floating panel — separate card below with gap */}
