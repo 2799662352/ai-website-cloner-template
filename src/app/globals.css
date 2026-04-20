@@ -121,11 +121,10 @@ body {
 /* -------------------------------------------------------------------------
    LibTV-style "+" handle
    -------------------------------------------------------------------------
-   The React Flow <Handle> element itself is 0x0 transparent (set via inline
-   style in NodeShell.tsx) — it only carries connection logic. The visible
-   plus-button lives in the child `.canvas-plus-handle__btn`, floating 25px
-   outside the node edge. It fades in when the parent node is hovered,
-   selected, or the user is dragging a connection.
+   The Handle element is 20x20 transparent with a 20x20 SVG "+" child. The
+   Handle has actual area so React Flow hit-testing works for both starting
+   and completing connections.  The child __btn controls visibility (hidden
+   by default, shown on node hover / selected / connecting).
    ------------------------------------------------------------------------- */
 
 :root {
@@ -137,11 +136,12 @@ body {
 
 /* The plus-button wrapper — hidden by default */
 .canvas-plus-handle__btn {
+  width: 20px;
+  height: 20px;
   opacity: 0;
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease;
-  will-change: opacity, transform;
+  transition: opacity 0.18s ease;
+  will-change: opacity;
+  cursor: crosshair;
 }
 
 /* Reveal the "+" when the parent node is hovered / selected,
@@ -200,11 +200,6 @@ body {
 .canvas-plus-handle.connecting .canvas-plus-handle__btn {
   filter: drop-shadow(0 0 6px rgba(54, 181, 240, 0.6));
   opacity: 1;
-}
-
-/* Give the cursor a hint that the "+" is grabbable to start a connection */
-.canvas-plus-handle__btn {
-  cursor: crosshair;
 }
 
 .react-flow.dark-theme .react-flow__edge-path {

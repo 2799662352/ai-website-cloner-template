@@ -214,6 +214,7 @@ export function CanvasArea() {
         deleteKeyCode={["Backspace", "Delete"]}
         multiSelectionKeyCode={["Shift", "Meta", "Control"]}
         elevateNodesOnSelect
+        connectionRadius={30}
         snapToGrid={snapToGrid}
         snapGrid={[20, 20]}
         proOptions={{ hideAttribution: true }}

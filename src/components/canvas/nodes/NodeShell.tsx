@@ -24,7 +24,6 @@ function PlusHandle({
   id: string;
 }) {
   const position = side === "left" ? Position.Left : Position.Right;
-  const offset = side === "left" ? -25 : 25;
   return (
     <Handle
       type={type}
@@ -32,32 +31,18 @@ function PlusHandle({
       id={id}
       className="canvas-plus-handle"
       style={{
-        width: 0,
-        height: 0,
-        minWidth: 0,
-        minHeight: 0,
-        padding: 0,
+        width: 20,
+        height: 20,
         background: "transparent",
         border: "none",
-        borderRadius: 0,
-        overflow: "visible",
-        pointerEvents: "auto",
+        borderRadius: "50%",
         zIndex: 20,
+        ...(side === "left"
+          ? { left: -25, top: "50%", transform: "translateY(-50%)" }
+          : { right: -25, top: "50%", transform: "translateY(-50%)" }),
       }}
     >
-      <div
-        className="canvas-plus-handle__btn"
-        style={{
-          width: 20,
-          height: 20,
-          pointerEvents: "auto",
-          transform: `translate(${offset}px, 0) translate(-50%, -50%) scale(1)`,
-          transformOrigin: "center center",
-          position: "absolute",
-          left: 0,
-          top: 0,
-        }}
-      >
+      <div className="canvas-plus-handle__btn">
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <circle cx="10" cy="10" r="9.35" className="canvas-plus-handle__bg" />
           <circle
