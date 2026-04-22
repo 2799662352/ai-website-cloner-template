@@ -180,14 +180,25 @@ body {
   --canvas-handle-icon-hover: rgba(255, 255, 255, 0.95);
 }
 
-/* The plus-button wrapper — always visible (matches LibTV).
-   Its transform is managed imperatively by NodeShell/VideoStoryNode. */
+/* The plus-button wrapper — hidden by default, shown when the node is
+   hovered or selected (matches LibTV exactly). */
 .canvas-plus-handle__btn {
   width: 20px;
   height: 20px;
-  opacity: 1;
+  opacity: 0;
   cursor: crosshair;
   pointer-events: none; /* mouse events handled by the hitarea */
+  transition: opacity 0.15s ease;
+}
+
+/* Show handles when node is hovered or selected (matches LibTV).
+   !important needed because Tailwind v4 layers give the base rule
+   higher precedence over @layer rules. */
+@layer base {
+  .react-flow__node:hover .canvas-plus-handle__btn,
+  .react-flow__node.selected .canvas-plus-handle__btn {
+    opacity: 1 !important;
+  }
 }
 
 /* SVG sub-parts — tinted via CSS custom properties so we can override on hover */
