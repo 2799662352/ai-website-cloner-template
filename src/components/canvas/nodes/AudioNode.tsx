@@ -51,7 +51,7 @@ function AudioNodeInner({ id, data, selected }: NodeProps & { data: AudioNodeDat
 
   const contextToolbar = selected && hasAudio ? (
     <div
-      className="nodrag absolute left-1/2 z-30 -translate-x-1/2"
+      className="nodrag node-floating-ui absolute left-1/2 z-30 -translate-x-1/2"
       style={{ top: -62 }}
     >
       <div className="flex items-center gap-0 whitespace-nowrap rounded-xl border border-[var(--canvas-node-border)] bg-[var(--Surface-Panel-background)] px-1.5 py-0.5 shadow-lg">

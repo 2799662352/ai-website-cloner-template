@@ -119,6 +119,51 @@ body {
 }
 
 /* -------------------------------------------------------------------------
+   LibTV-style group node
+   Uses the same CSS vars as LibTV: --canvas-group-bg / --canvas-group-border.
+   No handles. Label floats above the group (handled by GroupNode component).
+   ------------------------------------------------------------------------- */
+:root {
+  --canvas-group-bg: rgba(255, 255, 255, 0.1);
+  --canvas-group-border: rgba(255, 255, 255, 0.1);
+  --canvas-group-border-selected: rgba(168, 168, 168, 0.5);
+}
+
+.react-flow__node-group {
+  background: var(--canvas-group-bg) !important;
+  border: 1px solid var(--canvas-group-border) !important;
+  border-radius: 20px !important;
+  padding: 10px;
+  box-shadow: none !important;
+}
+
+.react-flow__node-group.selected {
+  border-color: var(--canvas-group-border-selected) !important;
+}
+
+.react-flow__node-group .canvas-group-label {
+  pointer-events: none;
+}
+
+/* LibTV-style NodeResizer — 4 subtle edge lines + 4 small corner handles.
+   When the group is not selected, the NodeResizer is unmounted (isVisible=false)
+   so these only show for the selected group. */
+.react-flow__node-group .react-flow__resize-control.line,
+.react-flow__node-group .canvas-group-resize-line {
+  border-color: var(--canvas-group-border-selected) !important;
+  border-width: 1px !important;
+  background: transparent !important;
+}
+.react-flow__node-group .react-flow__resize-control.handle,
+.react-flow__node-group .canvas-group-resize-handle {
+  background: var(--canvas-bg, #1a1a1a) !important;
+  border: 1px solid var(--canvas-group-border-selected) !important;
+  border-radius: 2px !important;
+  width: 8px !important;
+  height: 8px !important;
+}
+
+/* -------------------------------------------------------------------------
    LibTV-style "+" handle
    -------------------------------------------------------------------------
    The Handle element is 20x20 transparent with a 20x20 SVG "+" child. The
@@ -128,31 +173,21 @@ body {
    ------------------------------------------------------------------------- */
 
 :root {
-  --canvas-handle-bg: #1c1c1c;
-  --canvas-handle-icon: #c8c8c8;
-  --canvas-handle-bg-hover: rgba(54, 181, 240, 0.18);
-  --canvas-handle-icon-hover: rgb(54, 181, 240);
+  /* Match LibTV exactly: dark translucent pill with soft white icon */
+  --canvas-handle-bg: rgba(30, 30, 30, 0.9);
+  --canvas-handle-icon: rgba(255, 255, 255, 0.7);
+  --canvas-handle-bg-hover: rgba(30, 30, 30, 0.95);
+  --canvas-handle-icon-hover: rgba(255, 255, 255, 0.95);
 }
 
-/* The plus-button wrapper — hidden by default */
+/* The plus-button wrapper — always visible (matches LibTV).
+   Its transform is managed imperatively by NodeShell/VideoStoryNode. */
 .canvas-plus-handle__btn {
   width: 20px;
   height: 20px;
-  opacity: 0;
-  transition: opacity 0.18s ease;
-  will-change: opacity;
-  cursor: crosshair;
-}
-
-/* Reveal the "+" when the parent node is hovered / selected,
-   or while a connection is being dragged. */
-.react-flow__node:hover .canvas-plus-handle__btn,
-.react-flow__node.selected .canvas-plus-handle__btn,
-.react-flow__handle.connectingfrom .canvas-plus-handle__btn,
-.react-flow__handle.connectingto .canvas-plus-handle__btn,
-.react-flow__handle.valid .canvas-plus-handle__btn,
-.react-flow.connecting .canvas-plus-handle__btn {
   opacity: 1;
+  cursor: crosshair;
+  pointer-events: none; /* mouse events handled by the hitarea */
 }
 
 /* SVG sub-parts — tinted via CSS custom properties so we can override on hover */
@@ -169,19 +204,16 @@ body {
   transition: stroke 0.15s ease;
 }
 
-/* Direct hover on the "+" button itself — highlight cyan + subtle glow */
-.canvas-plus-handle:hover .canvas-plus-handle__btn,
-.canvas-plus-handle__btn:hover {
-  filter: drop-shadow(0 0 4px rgba(54, 181, 240, 0.55));
-}
-.canvas-plus-handle:hover .canvas-plus-handle__bg,
-.canvas-plus-handle__btn:hover .canvas-plus-handle__bg {
+/* On hitarea hover: subtle color bump on the icon. No drop-shadow —
+   LibTV's handle is clean with no glow in the resting/hover states. */
+.canvas-plus-handle__hitarea:hover ~ * .canvas-plus-handle__bg,
+.canvas-plus-handle__hitarea:hover .canvas-plus-handle__bg {
   fill: var(--canvas-handle-bg-hover);
 }
-.canvas-plus-handle:hover .canvas-plus-handle__ring,
-.canvas-plus-handle:hover .canvas-plus-handle__icon,
-.canvas-plus-handle__btn:hover .canvas-plus-handle__ring,
-.canvas-plus-handle__btn:hover .canvas-plus-handle__icon {
+.canvas-plus-handle__hitarea:hover ~ * .canvas-plus-handle__ring,
+.canvas-plus-handle__hitarea:hover .canvas-plus-handle__ring,
+.canvas-plus-handle__hitarea:hover ~ * .canvas-plus-handle__icon,
+.canvas-plus-handle__hitarea:hover .canvas-plus-handle__icon {
   stroke: var(--canvas-handle-icon-hover);
 }
 
@@ -195,11 +227,6 @@ body {
 .canvas-plus-handle.valid .canvas-plus-handle__icon,
 .canvas-plus-handle.connecting .canvas-plus-handle__icon {
   stroke: var(--canvas-handle-icon-hover);
-}
-.canvas-plus-handle.valid .canvas-plus-handle__btn,
-.canvas-plus-handle.connecting .canvas-plus-handle__btn {
-  filter: drop-shadow(0 0 6px rgba(54, 181, 240, 0.6));
-  opacity: 1;
 }
 
 .react-flow.dark-theme .react-flow__edge-path {
@@ -220,10 +247,94 @@ body {
 .react-flow.dark-theme .react-flow__connectionline path {
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(54, 181, 240, 0.45));
 }
 
 .react-flow__attribution {
   display: none !important;
+}
+
+/* When 2+ nodes are selected hide every per-node floating element
+   (title bar, context toolbar, floating editor panel, + handles)
+   so only the multi-select toolbar is visible — matches LibTV. */
+[data-multi-select] .node-floating-ui,
+[data-multi-select] .canvas-plus-handle__btn,
+[data-multi-select] .canvas-plus-handle__hitarea {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* -------------------------------------------------------------------------
+   LibTV-style multi-select floating toolbar
+   Appears when 2+ nodes are selected. Positioned above the selection.
+   ------------------------------------------------------------------------- */
+.multi-select-toolbar {
+  position: fixed;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 12px;
+  border: 1px solid var(--canvas-node-border);
+  background: var(--Surface-Panel-background);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  animation: mst-fade-in 0.15s ease;
+}
+
+@keyframes mst-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mst-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--canvas-controls-text);
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+.mst-btn:hover {
+  background: var(--canvas-controls-hover);
+}
+.mst-btn:active {
+  background: var(--canvas-controls-active);
+}
+
+.mst-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--canvas-node-border);
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.mst-dropdown-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--canvas-controls-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.mst-dropdown-item:hover {
+  background: var(--canvas-controls-hover);
 }
 
 /* Multi-angle editor slider thumb */

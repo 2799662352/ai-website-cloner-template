@@ -158,9 +158,11 @@ export function NodeContextMenu({
   const deleteNode = useCanvasStore((s) => s.deleteNode);
   const duplicateNode = useCanvasStore((s) => s.duplicateNode);
   const addNode = useCanvasStore((s) => s.addNode);
+  const ungroupNodes = useCanvasStore((s) => s.ungroupNodes);
   const canPaste = useCanPasteFromSession();
 
   const node = nodes.find((n) => n.id === nodeId);
+  const isGroup = node?.type === "group";
 
   const handleCopy = async () => {
     if (!node) return;
@@ -226,10 +228,65 @@ export function NodeContextMenu({
       />
       <Separator />
       <MenuItem label="创建副本" onClick={handleDuplicate} />
+      {isGroup && (
+        <>
+          <Separator />
+          <MenuItem
+            label="解除分组"
+            onClick={() => {
+              ungroupNodes(nodeId);
+              onClose();
+            }}
+          />
+        </>
+      )}
       <Separator />
       <MenuItem label="删除" shortcut="⌘⌫" destructive onClick={handleDelete} />
       <Separator />
       <MenuItem label="复制到剪贴板" onClick={handleCopyToClipboard} />
+    </div>
+  );
+}
+
+/** Right-click when multiple nodes are selected */
+export type MultiSelectContextMenuProps = MenuBaseProps & {
+  nodeIds: string[];
+};
+
+export function MultiSelectContextMenu({
+  x,
+  y,
+  onClose,
+  nodeIds,
+}: MultiSelectContextMenuProps) {
+  const groupNodes = useCanvasStore((s) => s.groupNodes);
+  const deleteNode = useCanvasStore((s) => s.deleteNode);
+
+  const handleGroup = () => {
+    groupNodes(nodeIds);
+    onClose();
+  };
+
+  const handleDeleteAll = () => {
+    for (const id of nodeIds) deleteNode(id);
+    onClose();
+  };
+
+  return (
+    <div
+      role="menu"
+      className="fixed z-[100] min-w-[200px] rounded-lg border border-[var(--canvas-node-border)] bg-[var(--Surface-Panel-background)] p-1 shadow-xl"
+      style={{ left: x, top: y }}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <MenuItem label="打组" shortcut="⌘G" onClick={handleGroup} />
+      <Separator />
+      <MenuItem
+        label={`删除 ${nodeIds.length} 个节点`}
+        shortcut="⌘⌫"
+        destructive
+        onClick={handleDeleteAll}
+      />
     </div>
   );
 }

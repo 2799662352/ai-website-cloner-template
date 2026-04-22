@@ -46,7 +46,10 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
   const [showPreview, setShowPreview] = useState(false);
   const [panelExpanded, setPanelExpanded] = useState(false);
   const isGenerating = data.taskInfo?.loading === true;
-  const showPanel = selected && hasImage && !isGenerating;
+  // Show the prompt/control panel when the image node is selected and either
+  // already has a generated image OR is a "generate" node (so a newly-created
+  // empty node via the drop menu also shows its prompt input + generate button).
+  const showPanel = selected && !isGenerating && (hasImage || isGenerate);
   const { getNode } = useReactFlow();
 
   // Image panel state
@@ -245,7 +248,7 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
   /* ────── Context toolbar (above image, integrates node title) ────── */
   const contextToolbar = selected && hasImage ? (
     <div
-      className="nodrag absolute left-1/2 z-30 -translate-x-1/2"
+      className="nodrag node-floating-ui absolute left-1/2 z-30 -translate-x-1/2"
       style={{ top: -62 }}
     >
       {isRotationNode ? (

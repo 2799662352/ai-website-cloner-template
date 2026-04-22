@@ -1,20 +1,26 @@
 "use client";
 
-import { memo, useState, useRef, useCallback } from "react";
+import { memo, useState, useRef, useCallback, useEffect } from "react";
 import type { NodeProps } from "@xyflow/react";
 import type { VideoNodeData } from "@/types/canvas";
 import { NodeShell } from "./NodeShell";
 import { IconChevronDown, IconTranslate, IconSend } from "../icons";
+import { useCanvasStore } from "@/store/canvas-store";
 
 /* ═══════════════════════════════════════════════════════
    Reusable tiny sub-components (tool buttons, thumbnails)
    ═══════════════════════════════════════════════════════ */
 
-function ToolBtnSmall({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ToolBtnSmall({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
   return (
     <button
       type="button"
-      className="nodrag flex items-center gap-1 rounded-lg border border-[var(--canvas-node-border)] px-2 py-1 text-[11px] text-fg-muted transition-colors hover:bg-white/5 hover:text-fg-default"
+      onClick={onClick}
+      className={`nodrag flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] transition-colors ${
+        active
+          ? "border-blue-500/40 bg-blue-500/15 text-blue-400"
+          : "border-[var(--canvas-node-border)] text-fg-muted hover:bg-white/5 hover:text-fg-default"
+      }`}
     >
       {icon}
       <span>{label}</span>
@@ -73,11 +79,74 @@ const VIDEO_TABS = [
   "文生视频", "全能参考", "图生视频", "首尾帧", "视频编辑",
 ];
 
-const MODEL_MAP: Record<string, string> = {
-  "star-video2": "Seedance 2.0 VIP",
-  "kling-v3-omni": "Kling O3",
-  "wanx2.7-video": "Wan 2.7",
+const VIDEO_MODELS = [
+  { id: "star-video2", name: "Seedance 2.0 VIP", icon: "💛" },
+  { id: "seedance-1.5-pro", name: "Seedance 1.5 Pro", icon: "💛" },
+  { id: "sora-2", name: "Sora 2", icon: "🟣" },
+  { id: "sora-2-pro", name: "Sora 2 Pro", icon: "🟣" },
+  { id: "kling-v3-omni", name: "Kling O3", icon: "🔵" },
+  { id: "kling-v1-pro", name: "Kling V1 Pro", icon: "🔵" },
+  { id: "veo-2", name: "Veo 2", icon: "🟢" },
+  { id: "wanx2.7-video", name: "Wan 2.7", icon: "🟠" },
+] as const;
+
+const MODEL_MAP: Record<string, string> = Object.fromEntries(
+  VIDEO_MODELS.map((m) => [m.id, m.name])
+);
+
+const MODEL_ICON_MAP: Record<string, string> = Object.fromEntries(
+  VIDEO_MODELS.map((m) => [m.id, m.icon])
+);
+
+const RATIO_OPTIONS = ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"] as const;
+const DURATION_OPTIONS = [3, 5, 8, 10, 15, 25] as const;
+const QUALITY_OPTIONS = ["480p", "720p", "1080p"] as const;
+
+const QUALITY_LABEL: Record<string, string> = {
+  low: "标准",
+  "480p": "标准",
+  "720p": "高品质",
+  high: "高品质",
+  "1080p": "超清",
 };
+
+function DropdownMenu<T extends string | number>({
+  items,
+  value,
+  onSelect,
+  renderItem,
+}: {
+  items: readonly T[];
+  value: T;
+  onSelect: (v: T) => void;
+  renderItem?: (v: T) => React.ReactNode;
+}) {
+  return (
+    <div
+      className="absolute top-full left-0 z-50 mt-2 flex max-h-[260px] flex-col overflow-y-auto overflow-x-hidden rounded-xl border border-white/15 bg-[#1e1e1e] py-1.5 shadow-2xl"
+      style={{ minWidth: 180 }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {items.map((item) => (
+        <button
+          key={String(item)}
+          type="button"
+          onClick={() => onSelect(item)}
+          className={`nodrag flex items-center gap-2 px-3 py-2 text-left text-[12px] transition-colors hover:bg-white/10 ${
+            item === value ? "bg-blue-500/10 text-blue-400" : "text-white/80"
+          }`}
+        >
+          {renderItem ? renderItem(item) : String(item)}
+          {item === value && (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="ml-auto shrink-0"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const COUNT_OPTIONS = ["1个", "2个", "3个", "4个"] as const;
 
 function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeData }) {
   const hasVideo = data.url.length > 0 && data.url[0] !== "";
@@ -89,10 +158,61 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const modelName = MODEL_MAP[data.params?.model ?? ""] ?? data.params?.model ?? "模型";
+  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+
+  const currentModel = data.params?.model ?? "star-video2";
+  const modelName = MODEL_MAP[currentModel] ?? currentModel;
+  const modelIcon = MODEL_ICON_MAP[currentModel] ?? "💛";
   const dur = data.params?.settings.duration ?? 5;
   const ratio = data.params?.settings.ratio ?? "16:9";
-  const w = hasVideo ? Math.min(data.contentWidth, 629) : 350;
+  const quality = data.params?.settings.quality ?? "720p";
+  const qualityLabel = QUALITY_LABEL[quality] ?? quality;
+
+  const [showModelMenu, setShowModelMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [activeTools, setActiveTools] = useState<Record<string, boolean>>({});
+  const [genCount, setGenCount] = useState("1个");
+  const [showCountMenu, setShowCountMenu] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [translating, setTranslating] = useState(false);
+
+  useEffect(() => {
+    if (!selected) {
+      setShowModelMenu(false);
+      setShowSettingsMenu(false);
+      setShowCountMenu(false);
+    }
+  }, [selected]);
+
+  const setModel = useCallback((m: string) => {
+    updateNodeData(id, { params: { ...data.params!, model: m } });
+    setShowModelMenu(false);
+  }, [id, data.params, updateNodeData]);
+
+  const setSetting = useCallback((key: string, val: string | number) => {
+    updateNodeData(id, {
+      params: { ...data.params!, settings: { ...data.params!.settings, [key]: val } },
+    });
+  }, [id, data.params, updateNodeData]);
+
+  const toggleTool = useCallback((tool: string) => {
+    setActiveTools((prev) => ({ ...prev, [tool]: !prev[tool] }));
+  }, []);
+
+  const handleSend = useCallback(() => {
+    if (sending) return;
+    setSending(true);
+    setTimeout(() => setSending(false), 1500);
+  }, [sending]);
+
+  const handleTranslate = useCallback(() => {
+    if (translating) return;
+    setTranslating(true);
+    setTimeout(() => setTranslating(false), 1200);
+  }, [translating]);
+
+  const w = hasVideo ? Math.min(data.contentWidth, 629) : 500;
   const h = hasVideo ? 280 : 350;
 
   const togglePlay = useCallback(() => {
@@ -153,7 +273,7 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
   /* ── Toolbar (above node) ── */
   const contextToolbar = selected && hasVideo ? (
     <div
-      className="nodrag absolute left-1/2 z-30 -translate-x-1/2"
+      className="nodrag node-floating-ui absolute left-1/2 z-30 -translate-x-1/2"
       style={{ top: -62 }}
     >
       <div className="flex items-center gap-0 whitespace-nowrap rounded-xl border border-[var(--canvas-node-border)] bg-[var(--Surface-Panel-background)] px-1 py-0.5 shadow-lg">
@@ -166,6 +286,36 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
       </div>
     </div>
   ) : undefined;
+
+  /* ── Frame extraction bar (shown when video exists and selected) ── */
+  const frameExtractionBar = hasVideo && selected ? (
+    <div className="flex items-center gap-2 border-b border-[var(--canvas-node-border)] px-3 py-2">
+      <button className="nodrag flex h-6 w-6 items-center justify-center text-fg-muted hover:text-fg-default" title="播放/暂停">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+      </button>
+      <span className="text-[10px] tabular-nums text-fg-muted">{fmt(currentTime)}</span>
+      <div className="nodrag relative flex-1 cursor-pointer" style={{ height: 3 }}>
+        <div className="absolute inset-0 rounded-full bg-white/20" />
+        <div className="absolute left-0 top-0 h-full rounded-full bg-white/60" style={{ width: `${progressPct}%` }} />
+      </div>
+      <span className="text-[10px] tabular-nums text-fg-muted">{fmt(duration || 8)}</span>
+      <div className="flex items-center gap-1.5">
+        <button className="nodrag whitespace-nowrap rounded-md border border-[var(--canvas-node-border)] px-2 py-0.5 text-[10px] text-fg-muted transition-colors hover:bg-white/5 hover:text-fg-default">
+          截取首帧
+        </button>
+        <button className="nodrag whitespace-nowrap rounded-md border border-[var(--canvas-node-border)] px-2 py-0.5 text-[10px] text-fg-muted transition-colors hover:bg-white/5 hover:text-fg-default">
+          截取尾帧
+        </button>
+      </div>
+      <span className="text-[10px] text-fg-muted/60">点击截取当前帧</span>
+      <button className="nodrag flex h-5 w-5 items-center justify-center text-fg-muted hover:text-fg-default" title="全屏">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15 3 21 3 21 9" />
+          <polyline points="9 21 3 21 3 15" />
+        </svg>
+      </button>
+    </div>
+  ) : null;
 
   /* ── Generation panel (below node, when no video or always for controls) ── */
   const controlPanel = selected ? (
@@ -188,16 +338,22 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
               </button>
             ))}
           </div>
-          <button className="nodrag flex h-6 w-6 shrink-0 items-center justify-center rounded text-fg-muted hover:bg-white/5 hover:text-fg-default">
+          <button
+            className={`nodrag flex h-6 w-6 shrink-0 items-center justify-center rounded transition-colors ${
+              isExpanded ? "bg-white/10 text-fg-default" : "text-fg-muted hover:bg-white/5 hover:text-fg-default"
+            }`}
+            onClick={() => setIsExpanded(!isExpanded)}
+            title={isExpanded ? "收起" : "展开"}
+          >
             <ExpandIcon />
           </button>
         </div>
 
         {/* Row 2: Tool buttons + reference thumbnails */}
         <div className="flex items-center gap-1.5">
-          <ToolBtnSmall icon={<SearchIcon />} label="标记" />
-          <ToolBtnSmall icon={<CameraMotionIcon />} label="运镜" />
-          <ToolBtnSmall icon={<PlusIcon />} label="主体" />
+          <ToolBtnSmall icon={<SearchIcon />} label="标记" active={activeTools.mark} onClick={() => toggleTool("mark")} />
+          <ToolBtnSmall icon={<CameraMotionIcon />} label="运镜" active={activeTools.motion} onClick={() => toggleTool("motion")} />
+          <ToolBtnSmall icon={<PlusIcon />} label="主体" active={activeTools.subject} onClick={() => toggleTool("subject")} />
           {/* Reference image thumbnails */}
           <div className="flex items-center gap-1 pl-1">
             <RefThumb label="主体1" />
@@ -206,35 +362,170 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
         </div>
 
         {/* Prompt area */}
-        <div className="relative min-h-14 overflow-hidden rounded-xl">
+        <div className="relative min-h-14 rounded-xl">
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="描述你想要生成的画面内容，@引用素材"
             className="nodrag h-full w-full resize-none rounded-xl border border-[var(--canvas-node-border)] bg-transparent px-3 py-2.5 text-[13px] leading-relaxed text-fg-default placeholder:text-fg-muted/50 focus:border-[var(--canvas-node-border-selected)] focus:outline-none"
-            rows={3}
+            rows={isExpanded ? 8 : 3}
           />
         </div>
 
         {/* Bottom bar: model + settings + actions */}
-        <div className="flex w-full items-center gap-1">
-          <div className="flex min-w-0 flex-1 items-center gap-1">
-            <Sel value={modelName} icon="💛" />
-            <Sel value={`${ratio} · 高品质 · ${dur}s`} />
-            <button className="nodrag flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-fg-muted hover:bg-white/5 hover:text-fg-default">
+        <div className="flex w-full items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            {/* Model selector */}
+            <div className="relative">
+              <button
+                className="nodrag flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[12px] text-white/90 hover:bg-white/8"
+                onClick={() => { setShowModelMenu(!showModelMenu); setShowSettingsMenu(false); }}
+              >
+                <span className="text-[12px]">{modelIcon}</span>
+                <span>{modelName}</span>
+                <IconChevronDown className="h-3 w-3 shrink-0 text-white/50" />
+              </button>
+              {showModelMenu && (
+                <DropdownMenu
+                  items={VIDEO_MODELS.map((m) => m.id)}
+                  value={currentModel}
+                  onSelect={setModel}
+                  renderItem={(mid) => {
+                    const m = VIDEO_MODELS.find((v) => v.id === mid);
+                    return m ? <><span>{m.icon}</span><span>{m.name}</span></> : mid;
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Settings selector (ratio · quality · duration) */}
+            <div className="relative">
+              <button
+                className="nodrag flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-[12px] text-white/90 hover:bg-white/8"
+                onClick={() => { setShowSettingsMenu(!showSettingsMenu); setShowModelMenu(false); }}
+              >
+                <span>{ratio} · {qualityLabel} · {dur}s</span>
+                <IconChevronDown className="h-3 w-3 shrink-0 text-white/50" />
+              </button>
+              {showSettingsMenu && (
+                <div
+                  className="absolute top-full left-1/2 z-50 mt-2 -translate-x-1/2 rounded-xl border border-white/15 bg-[#1e1e1e] p-3.5 shadow-2xl"
+                  style={{ minWidth: 260 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Ratio */}
+                  <div className="mb-3">
+                    <div className="mb-1.5 text-[11px] font-medium text-white/60">比例</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {RATIO_OPTIONS.map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => setSetting("ratio", r)}
+                          className={`nodrag rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            ratio === r
+                              ? "border-blue-500/50 bg-blue-500/20 text-blue-400"
+                              : "border-white/10 bg-white/5 text-white/80 hover:border-white/20 hover:bg-white/10"
+                          }`}
+                        >{r}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Quality */}
+                  <div className="mb-3">
+                    <div className="mb-1.5 text-[11px] font-medium text-white/60">清晰度</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {QUALITY_OPTIONS.map((q) => (
+                        <button
+                          key={q}
+                          onClick={() => setSetting("quality", q)}
+                          className={`nodrag rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            quality === q || (quality === "low" && q === "480p") || (quality === "high" && q === "720p")
+                              ? "border-blue-500/50 bg-blue-500/20 text-blue-400"
+                              : "border-white/10 bg-white/5 text-white/80 hover:border-white/20 hover:bg-white/10"
+                          }`}
+                        >{q} {QUALITY_LABEL[q]}</button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Duration */}
+                  <div>
+                    <div className="mb-1.5 text-[11px] font-medium text-white/60">时长</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {DURATION_OPTIONS.map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setSetting("duration", d)}
+                          className={`nodrag rounded-lg border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                            dur === d
+                              ? "border-blue-500/50 bg-blue-500/20 text-blue-400"
+                              : "border-white/10 bg-white/5 text-white/80 hover:border-white/20 hover:bg-white/10"
+                          }`}
+                        >{d}s</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              className={`nodrag flex shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-[11px] transition-colors ${
+                activeTools.storyboard
+                  ? "bg-blue-500/15 text-blue-400"
+                  : "text-fg-muted hover:bg-white/5 hover:text-fg-default"
+              }`}
+              onClick={() => toggleTool("storyboard")}
+            >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /></svg>
               <span>智能分镜</span>
             </button>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <button className="nodrag flex h-7 w-7 items-center justify-center text-fg-muted hover:text-fg-default"><IconTranslate /></button>
-            <Sel value="1个" small />
+            <button
+              className={`nodrag flex h-7 w-7 shrink-0 items-center justify-center transition-colors ${
+                translating ? "animate-pulse text-blue-400" : "text-fg-muted hover:text-fg-default"
+              }`}
+              title="翻译提示词"
+              onClick={handleTranslate}
+            >
+              <IconTranslate />
+            </button>
+            <div className="relative">
+              <button
+                className="nodrag flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-md px-1 text-[10px] text-fg-default hover:bg-white/5"
+                onClick={() => { setShowCountMenu(!showCountMenu); setShowModelMenu(false); setShowSettingsMenu(false); }}
+              >
+                <span>{genCount}</span>
+                <IconChevronDown className="h-2.5 w-2.5 shrink-0 text-fg-muted" />
+              </button>
+              {showCountMenu && (
+                <DropdownMenu
+                  items={COUNT_OPTIONS}
+                  value={genCount}
+                  onSelect={(v) => { setGenCount(v); setShowCountMenu(false); }}
+                />
+              )}
+            </div>
             <span className="flex items-center gap-0.5 px-1 text-[10px] tabular-nums text-fg-muted">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 10 10-12h-9l1-10z" /></svg>
               88
             </span>
-            <button className="nodrag flex h-7 w-7 items-center justify-center rounded-full bg-fg-default text-canvas-bg hover:opacity-90">
-              <IconSend className="h-3.5 w-3.5" />
+            <button
+              className={`nodrag flex h-7 w-7 items-center justify-center rounded-full transition-all ${
+                sending
+                  ? "scale-95 bg-blue-500 text-white"
+                  : "bg-fg-default text-canvas-bg hover:opacity-90"
+              }`}
+              onClick={handleSend}
+              title="生成视频"
+            >
+              {sending ? (
+                <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                </svg>
+              ) : (
+                <IconSend className="h-3.5 w-3.5" />
+              )}
             </button>
           </div>
         </div>
@@ -247,8 +538,9 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
     <TimelineEditor onClose={() => setShowTimeline(false)} duration={duration || 8} />
   ) : null;
 
-  const floatingPanel = (timelinePanel || controlPanel) ? (
+  const floatingPanel = (timelinePanel || controlPanel || frameExtractionBar) ? (
     <>
+      {frameExtractionBar}
       {!showTimeline && controlPanel}
       {timelinePanel}
     </>
@@ -514,9 +806,9 @@ function ToolbarSep() {
 
 function Sel({ value, small, icon }: { value: string; small?: boolean; icon?: string }) {
   return (
-    <button className={`nodrag flex items-center gap-0.5 rounded-md text-fg-default hover:bg-white/5 ${small ? "px-1 text-[10px]" : "px-1.5 py-0.5 text-[11px]"}`}>
+    <button className={`nodrag flex shrink-0 items-center gap-0.5 whitespace-nowrap rounded-md text-fg-default hover:bg-white/5 ${small ? "px-1 text-[10px]" : "px-1.5 py-0.5 text-[11px]"}`}>
       {icon && <span className="text-[11px]">{icon}</span>}
-      <span className="truncate">{value}</span>
+      <span>{value}</span>
       <IconChevronDown className="h-2.5 w-2.5 shrink-0 text-fg-muted" />
     </button>
   );

@@ -52,3 +52,8 @@ temp/
 liblib-auth.json
 *-auth.json
 *.cookies.json
+
+# Temporary screenshots from agent-browser / debugging
+*.png
+*.jpg
+*.jpeg

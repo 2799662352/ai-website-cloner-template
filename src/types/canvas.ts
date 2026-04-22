@@ -20,7 +20,15 @@ export type CanvasNodeType =
   | "script"
   | "video-clip"
   | "video-story"
-  | "temp";
+  | "temp"
+  | "group";
+
+export interface GroupNodeData {
+  [key: string]: unknown;
+  type: "group";
+  label: string;
+  groupColor?: string;
+}
 
 export interface TaskInfo {
   taskId: string;
@@ -221,7 +229,8 @@ export type AnyNodeData =
   | AudioNodeData
   | ScriptNodeData
   | VideoClipNodeData
-  | VideoStoryNodeData;
+  | VideoStoryNodeData
+  | GroupNodeData;
 
 export type CanvasNode = Node<AnyNodeData, CanvasNodeType>;
 export type CanvasEdge = Edge;
