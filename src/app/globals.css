@@ -180,13 +180,12 @@ body {
   --canvas-handle-icon-hover: rgba(255, 255, 255, 0.95);
 }
 
-/* The plus-button wrapper — hidden by default, shown on hitarea hover
-   (matches LibTV). Opacity is toggled imperatively in PlusHandle's
-   onEnter / onLeave handlers for instant response. */
+/* The plus-button wrapper — always visible (matches LibTV).
+   Its transform is managed imperatively by NodeShell/VideoStoryNode. */
 .canvas-plus-handle__btn {
   width: 20px;
   height: 20px;
-  opacity: 0;
+  opacity: 1;
   cursor: crosshair;
   pointer-events: none; /* mouse events handled by the hitarea */
 }

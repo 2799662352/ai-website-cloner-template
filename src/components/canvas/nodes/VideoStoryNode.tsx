@@ -95,9 +95,7 @@ function PlusHandle({
     const el = iconWrapRef.current;
     if (!el) return;
     el.style.transform = `translate(${baseTranslate}px, 0px) scale(1)`;
-    el.style.opacity = "0";
-    el.style.transition =
-      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.18s ease";
+    el.style.transition = "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1)";
   }, [iconWrapRef, baseTranslate]);
 
   const onMove = useCallback(
@@ -120,18 +118,14 @@ function PlusHandle({
   const onEnter = useCallback(() => {
     const icon = iconWrapRef.current;
     if (!icon) return;
-    icon.style.transition =
-      "transform 0.12s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.15s ease";
-    icon.style.opacity = "1";
+    icon.style.transition = "transform 0.12s cubic-bezier(0.33, 1, 0.68, 1)";
   }, [iconWrapRef]);
 
   const onLeave = useCallback(() => {
     const icon = iconWrapRef.current;
     if (!icon) return;
-    icon.style.transition =
-      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.18s ease";
+    icon.style.transition = "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1)";
     icon.style.transform = `translate(${baseTranslate}px, 0px) scale(1)`;
-    icon.style.opacity = "0";
   }, [iconWrapRef, baseTranslate]);
 
   return (
