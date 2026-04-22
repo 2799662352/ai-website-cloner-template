@@ -44,13 +44,14 @@ function PlusHandle({
   // translate leaves the icon 15px outside the edge — matches LibTV exactly.
   const baseTranslate = side === "left" ? 25 : -25;
 
-  // Apply default transform (resting position) once.
+  // Apply default transform + hidden state once.
   useEffect(() => {
     const el = iconWrapRef.current;
     if (!el) return;
     el.style.transform = `translate(${baseTranslate}px, 0px) scale(1)`;
+    el.style.opacity = "0";
     el.style.transition =
-      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1)";
+      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.18s ease";
   }, [iconWrapRef, baseTranslate]);
 
   const onMove = useCallback(
@@ -60,10 +61,6 @@ function PlusHandle({
       if (!hit || !icon) return;
       const r = hit.getBoundingClientRect();
       if (r.height <= 0 || r.width <= 0) return;
-      // LibTV tracks the mouse in both axes — the icon can be at any point
-      // inside the hitarea, pivoting around its center. Screen-pixel offsets
-      // are written directly into the CSS translate so the icon parallaxes
-      // with the viewport's zoom, matching LibTV exactly.
       const localX = e.clientX - (r.left + r.width / 2);
       const localY = e.clientY - (r.top + r.height / 2);
       const clampedX = Math.max(-r.width / 2, Math.min(r.width / 2, localX));
@@ -78,15 +75,17 @@ function PlusHandle({
     const icon = iconWrapRef.current;
     if (!icon) return;
     icon.style.transition =
-      "transform 0.12s cubic-bezier(0.33, 1, 0.68, 1)";
+      "transform 0.12s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.15s ease";
+    icon.style.opacity = "1";
   }, [iconWrapRef]);
 
   const onLeave = useCallback(() => {
     const icon = iconWrapRef.current;
     if (!icon) return;
     icon.style.transition =
-      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1)";
+      "transform 0.18s cubic-bezier(0.33, 1, 0.68, 1), opacity 0.18s ease";
     icon.style.transform = `translate(${baseTranslate}px, 0px) scale(1)`;
+    icon.style.opacity = "0";
   }, [iconWrapRef, baseTranslate]);
 
   return (
