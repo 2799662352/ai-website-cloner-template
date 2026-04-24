@@ -394,9 +394,9 @@ export const JimengRichInput = forwardRef<JimengRichInputHandle, JimengRichInput
       <Image
         style={{ display: 'none' }}
         preview={{
-          visible: previewVisible,
+          open: previewVisible,
           src: previewSrc,
-          onVisibleChange: (v) => setPreviewVisible(v),
+          onOpenChange: (v) => setPreviewVisible(v),
         }}
       />
       <ChipPreviewPopover

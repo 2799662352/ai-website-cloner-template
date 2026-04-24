@@ -493,7 +493,7 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
         <div className="flex w-full items-center gap-1.5 border-t border-white/[0.04] pt-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
             {/* Model selector */}
-            <Popover open={imgModelOpen} onOpenChange={setImgModelOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={DARK_POPOVER_STYLE}
+            <Popover open={imgModelOpen} onOpenChange={setImgModelOpen} trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: DARK_POPOVER_STYLE }}
               content={<div className="jm-popover-menu">{IMAGE_MODELS.map(m => (
                 <div key={m.value} className={`jm-menu-item ${m.value === imgModel ? 'selected' : ''}`} onClick={() => { setImgModel(m.value); setImgModelOpen(false); }}>
                   <div className="jm-menu-item-title">{m.label}</div><div className="jm-menu-item-desc">{m.description}</div>
@@ -504,8 +504,8 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
             </Popover>
 
             {/* Ratio + Quality selector — matches LibTV grid layout */}
-            <Popover open={imgRatioOpen} onOpenChange={setImgRatioOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide
-              overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: '16px 16px 12px', minWidth: 280 }}
+            <Popover open={imgRatioOpen} onOpenChange={setImgRatioOpen} trigger="click" placement="topLeft" arrow={false} destroyOnHidden
+              styles={{ container: { ...DARK_POPOVER_STYLE, padding: '16px 16px 12px', minWidth: 280 } }}
               content={
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                   {/* Quality row */}
@@ -573,8 +573,8 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
               trigger="click"
               placement="topLeft"
               arrow={false}
-              destroyTooltipOnHide
-              overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: 0, minWidth: 240, overflow: "hidden" }}
+              destroyOnHidden
+              styles={{ container: { ...DARK_POPOVER_STYLE, padding: 0, minWidth: 240, overflow: "hidden" } }}
               content={
                 <div style={{ fontSize: 13 }}>
                   <div style={{ padding: "12px 14px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -615,7 +615,7 @@ function ImageNodeInner({ id, data, selected }: NodeProps & { data: ImageNodeDat
             <PanelIconBtn title="联网搜索"><WebSearchIcon /></PanelIconBtn>
 
             {/* Count selector */}
-            <Popover open={imgCountOpen} onOpenChange={setImgCountOpen} trigger="click" placement="top" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ ...DARK_POPOVER_STYLE, padding: '6px' }}
+            <Popover open={imgCountOpen} onOpenChange={setImgCountOpen} trigger="click" placement="top" arrow={false} destroyOnHidden styles={{ container: { ...DARK_POPOVER_STYLE, padding: '6px' } }}
               content={<div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, minWidth: 120 }}>
                 {[1,2,3,4,5,6,7,8,9].map(n => (
                   <button key={n} type="button" onClick={() => { setImgCount(n); setImgCountOpen(false); }}

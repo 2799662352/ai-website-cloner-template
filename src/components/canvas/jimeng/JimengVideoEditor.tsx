@@ -25,13 +25,13 @@ import {
 import './JimengVideoEditor.css';
 
 const MODE_LABELS: Record<string, string> = {
-  text2video: '文生视频',
-  first_frame: '首帧',
-  first_last_frame: '首尾帧',
-  reference_images: '参考图',
-  multimodal_ref: '全能参考',
-  edit_video: '编辑视频',
-  extend_video: '延长视频',
+  text2video: '????',
+  first_frame: '??',
+  first_last_frame: '???',
+  reference_images: '???',
+  multimodal_ref: '????',
+  edit_video: '????',
+  extend_video: '????',
 };
 
 function replaceFrameInOrder(
@@ -139,7 +139,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
     });
     arkAudiosWithRoles.forEach((m, i) => {
       const id = m._uid || `aud-${i}-${m.url.slice(-12)}`;
-      lookup.set(id, { id, type: 'audio', url: m.url, displayUrl: m.url, role: m.role, typedArrayIndex: i, duration: m.duration, label: `音频${i + 1}` });
+      lookup.set(id, { id, type: 'audio', url: m.url, displayUrl: m.url, role: m.role, typedArrayIndex: i, duration: m.duration, label: `??${i + 1}` });
     });
     const ordered = mediaOrder.map(uid => lookup.get(uid)).filter(Boolean) as UnifiedMedia[];
     const orderSet = new Set(mediaOrder);
@@ -186,7 +186,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
           } else if (!arkImagesWithRoles.find(i => i.role === 'last_frame')) {
             await handleImageUpload(file, 'last_frame');
           } else {
-            message.warning('最多上传2张图片');
+            message.warning('????2???');
           }
         } else {
           await handleImageUpload(file, 'reference_image');
@@ -196,15 +196,15 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
         const localUrl = URL.createObjectURL(file);
         setArkVideosWithRoles(prev => [...prev, { url: localUrl, role: 'reference_video' as const, _uid: newUid }]);
         setMediaOrder(prev => [...prev, newUid]);
-        message.success('已添加视频参考');
+        message.success('???????');
       } else if (isAudio) {
         const newUid = genMediaUid();
         const localUrl = URL.createObjectURL(file);
         setArkAudiosWithRoles(prev => [...prev, { url: localUrl, role: 'reference_audio' as const, _uid: newUid }]);
         setMediaOrder(prev => [...prev, newUid]);
-        message.success('已添加音频参考');
+        message.success('???????');
       } else {
-        message.warning('不支持的文件类型');
+        message.warning('????????');
       }
     } finally {
       uploadingRef.current = false;
@@ -273,7 +273,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
     let imgIdx = 1, vidIdx = 1, audIdx = 1;
     allMedia.forEach(m => {
       if (m.type === 'image') {
-        refs.push({ index: imgIdx++, type: 'image', thumbnail: m.displayUrl, url: m.url, label: m.role === 'first_frame' ? '首帧' : m.role === 'last_frame' ? '尾帧' : undefined });
+        refs.push({ index: imgIdx++, type: 'image', thumbnail: m.displayUrl, url: m.url, label: m.role === 'first_frame' ? '??' : m.role === 'last_frame' ? '??' : undefined });
       } else if (m.type === 'video') {
         refs.push({ index: vidIdx++, type: 'video', thumbnail: m.thumbnail, url: m.url, duration: m.duration });
       } else if (m.type === 'audio') {
@@ -304,7 +304,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
   const renderFrameSlotOptions = (role: 'first_frame' | 'last_frame') => (
     <div className="jm-media-list" style={{ minWidth: 'auto' }}>
       <Upload accept="image/*" showUploadList={false} beforeUpload={(f) => { handleImageUpload(f, role); return false; }}>
-        <div className="jm-media-add"><PlusOutlined style={{ fontSize: 16 }} /><span>上传</span></div>
+        <div className="jm-media-add"><PlusOutlined style={{ fontSize: 16 }} /><span>??</span></div>
       </Upload>
     </div>
   );
@@ -319,20 +319,20 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
         beforeUpload={handleUnifiedUpload}
         multiple
       >
-        <div className="jm-add-menu-item"><CloudUploadOutlined /><span>上传</span></div>
+        <div className="jm-add-menu-item"><CloudUploadOutlined /><span>??</span></div>
       </Upload>
-      <div className="jm-add-menu-item" onClick={() => { setMediaPopoverOpen(false); message.info('素材库开发中'); }}>
-        <FolderOpenOutlined /><span>素材库</span>
+      <div className="jm-add-menu-item" onClick={() => { setMediaPopoverOpen(false); message.info('??????'); }}>
+        <FolderOpenOutlined /><span>???</span>
       </div>
-      <div className="jm-add-menu-item" onClick={() => { setMediaPopoverOpen(false); message.info('人像库开发中'); }}>
-        <UserOutlined /><span>人像库</span>
+      <div className="jm-add-menu-item" onClick={() => { setMediaPopoverOpen(false); message.info('??????'); }}>
+        <UserOutlined /><span>???</span>
       </div>
     </div>
   );
 
   const handleGenerate = useCallback(() => {
     if (onGenerate) onGenerate();
-    else message.info('生成功能开发中');
+    else message.info('???????');
   }, [onGenerate]);
 
   return (
@@ -352,7 +352,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
               const ffDisplay = ff ? (ff.thumbnailUrl || ff.url) : '';
               return ff ? (
                 <div className="jm-fl-slot filled">
-                  <img src={ffDisplay} alt="首帧" />
+                  <img src={ffDisplay} alt="??" />
                   <button className="jm-fl-remove" onClick={(e) => {
                     e.stopPropagation();
                     const item = arkImagesWithRoles.find(i => i.role === 'first_frame');
@@ -361,20 +361,20 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
                   }}><CloseOutlined /></button>
                 </div>
               ) : (
-                <Popover content={renderFrameSlotOptions('first_frame')} trigger="click" placement="bottom" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
-                  <div className="jm-fl-slot"><div className="jm-fl-add"><PlusOutlined /><span>首帧</span></div></div>
+                <Popover content={renderFrameSlotOptions('first_frame')} trigger="click" placement="bottom" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' } }}>
+                  <div className="jm-fl-slot"><div className="jm-fl-add"><PlusOutlined /><span>??</span></div></div>
                 </Popover>
               );
             })()}
             {volcengineArkMode === 'first_last_frame' && (
               <>
-                <div className="jm-fl-arrow">⇌</div>
+                <div className="jm-fl-arrow">?</div>
                 {(() => {
                   const lf = arkImagesWithRoles.find(i => i.role === 'last_frame');
                   const lfDisplay = lf ? (lf.thumbnailUrl || lf.url) : '';
                   return lf ? (
                     <div className="jm-fl-slot filled">
-                      <img src={lfDisplay} alt="尾帧" />
+                      <img src={lfDisplay} alt="??" />
                       <button className="jm-fl-remove" onClick={(e) => {
                         e.stopPropagation();
                         const item = arkImagesWithRoles.find(i => i.role === 'last_frame');
@@ -383,8 +383,8 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
                       }}><CloseOutlined /></button>
                     </div>
                   ) : (
-                    <Popover content={renderFrameSlotOptions('last_frame')} trigger="click" placement="bottom" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
-                      <div className="jm-fl-slot"><div className="jm-fl-add"><PlusOutlined /><span>尾帧</span></div></div>
+                    <Popover content={renderFrameSlotOptions('last_frame')} trigger="click" placement="bottom" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' } }}>
+                      <div className="jm-fl-slot"><div className="jm-fl-add"><PlusOutlined /><span>??</span></div></div>
                     </Popover>
                   );
                 })()}
@@ -394,8 +394,8 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
         ) : (
           <div ref={mediaTriggerRef} className={`jm-media-trigger ${allMedia.length > 0 ? 'has-media' : ''} ${mediaPopoverOpen ? 'popover-open' : ''} ${activeId || keepExpandedAfterDrag ? 'is-dragging' : ''}`} onMouseLeave={() => { if (keepExpandedAfterDrag) setKeepExpandedAfterDrag(false); }}>
             {allMedia.length === 0 ? (
-              <Popover content={renderAddMenu()} trigger="click" placement="bottomLeft" open={mediaPopoverOpen} onOpenChange={handlePopoverOpenChange} arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
-                <div className="jm-empty-box"><PlusOutlined style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} /><span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>参考内容</span></div>
+              <Popover content={renderAddMenu()} trigger="click" placement="bottomLeft" open={mediaPopoverOpen} onOpenChange={handlePopoverOpenChange} arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' } }}>
+                <div className="jm-empty-box"><PlusOutlined style={{ fontSize: 16, color: 'rgba(255,255,255,0.35)' }} /><span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>????</span></div>
               </Popover>
             ) : (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
@@ -413,7 +413,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
                         />
                       );
                     })}
-                    <Popover content={renderAddMenu()} trigger="click" placement="bottomLeft" open={mediaPopoverOpen} onOpenChange={handlePopoverOpenChange} arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
+                    <Popover content={renderAddMenu()} trigger="click" placement="bottomLeft" open={mediaPopoverOpen} onOpenChange={handlePopoverOpenChange} arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' } }}>
                       <div className="jm-stack-add-card" style={{ '--expand-left': `${Math.min(allMedia.length, 20) * 88}px` } as React.CSSProperties} onClick={(e) => e.stopPropagation()}>
                         <PlusOutlined style={{ fontSize: 18, color: 'rgba(255,255,255,0.35)' }} />
                       </div>
@@ -439,7 +439,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
             ref={richInputRef}
             value={prompt}
             onChange={setPrompt}
-            placeholder={volcengineArkMode === 'text2video' ? "描述你想要生成的视频场景..." : "结合图片，描述你想生成的画面和动作。例如：海浪拍打着沙滩，粉色的月亮在天空缓缓升起。"}
+            placeholder={volcengineArkMode === 'text2video' ? "????????????..." : "??????????????????????????????????????????"}
             mediaReferences={mediaReferences}
           />
         </div>
@@ -447,21 +447,21 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
 
       <div className="jm-editor-bottom">
         <div className="jm-controls">
-          <div className="jm-pill jm-pill-blue jm-pill-static" role="status" aria-label="当前任务类型：视频生成" title="当前任务：视频生成">
-            <PlaySquareOutlined style={{ fontSize: 13 }} /><span className="jm-pill-text">视频生成</span>
+          <div className="jm-pill jm-pill-blue jm-pill-static" role="status" aria-label="???????????" title="?????????">
+            <PlaySquareOutlined style={{ fontSize: 13 }} /><span className="jm-pill-text">????</span>
           </div>
 
-          <Popover open={modelOpen} onOpenChange={setModelOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' }}
+          <Popover open={modelOpen} onOpenChange={setModelOpen} trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' } }}
             content={<div className="jm-popover-menu">{VOLCENGINE_ARK_MODELS.map(m => (
               <div key={m.value} className={`jm-menu-item ${m.value === arkModel ? 'selected' : ''}`} onClick={() => handleModelChange(m.value)}>
                 <div className="jm-menu-item-title">{m.label}</div><div className="jm-menu-item-desc">{m.description}</div>
               </div>
             ))}</div>}
           >
-            <div className="jm-pill"><CodeSandboxOutlined style={{ fontSize: 12 }} /><span className="jm-pill-text">{currentModelLabel.replace(/[🔥⚡⭐]/g, '').trim()}</span></div>
+            <div className="jm-pill"><CodeSandboxOutlined style={{ fontSize: 12 }} /><span className="jm-pill-text">{currentModelLabel.replace(/[????]/g, '').trim()}</span></div>
           </Popover>
 
-          <Popover open={modeOpen} onOpenChange={setModeOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' }}
+          <Popover open={modeOpen} onOpenChange={setModeOpen} trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' } }}
             content={<div className="jm-popover-menu">{VOLCENGINE_ARK_VIDEO_MODES.map(mode => {
               const supported = mode.supportedModels.includes('all') || mode.supportedModels.includes(arkModel);
               return (
@@ -474,7 +474,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
             <div className="jm-pill"><BulbOutlined /><span className="jm-pill-text">{MODE_LABELS[volcengineArkMode] || volcengineArkMode}</span><CaretDownOutlined className="jm-pill-arrow" /></div>
           </Popover>
 
-          <Popover open={ratioOpen} onOpenChange={setRatioOpen} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' }}
+          <Popover open={ratioOpen} onOpenChange={setRatioOpen} trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, overflow: 'hidden', background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)' } }}
             content={<div className="jm-popover-menu">{VOLCENGINE_ARK_RATIOS.map(r => (
               <div key={r.value} className={`jm-menu-item ${r.value === arkRatio ? 'selected' : ''}`} onClick={() => { setArkRatio(r.value); setRatioOpen(false); }}>
                 <div className="jm-menu-item-title">{r.label}</div>
@@ -484,7 +484,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
             <div className="jm-pill"><BorderOutlined style={{ fontSize: 13 }} /><span>{arkRatio}</span></div>
           </Popover>
 
-          <Popover trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', padding: '6px' }}
+          <Popover trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: { borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', padding: '6px' } }}
             content={<div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 200 }}>
               {Array.from({ length: durationRange.max - durationRange.min + 1 }, (_, i) => durationRange.min + i).map(d => (
                 <button key={d} type="button" onClick={() => setArkDuration(d)}
@@ -508,7 +508,7 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
               <Popover
                 content={<div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <input
-                    type="number" min={0} max={4294967295} step={1} placeholder="留空=随机"
+                    type="number" min={0} max={4294967295} step={1} placeholder="??=??"
                     value={arkSeed ?? ''}
                     onChange={e => { const v = e.target.value; setArkSeed(v === '' ? undefined : Number(v)); }}
                     style={{
@@ -519,17 +519,17 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
                     onFocus={e => { e.currentTarget.style.borderColor = 'rgba(54,181,240,0.4)'; }}
                     onBlur={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                   />
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>固定→类似结果</span>
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', whiteSpace: 'nowrap' }}>???????</span>
                 </div>}
-                trigger="click" placement="top" arrow={false} overlayInnerStyle={{ borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', padding: '8px 12px' }}
+                trigger="click" placement="top" arrow={false} styles={{ container: { borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', padding: '8px 12px' } }}
               >
-                <div className="jm-pill"><ExperimentOutlined style={{ fontSize: 12 }} /><span>{arkSeed !== undefined ? arkSeed : '随机'}</span></div>
+                <div className="jm-pill"><ExperimentOutlined style={{ fontSize: 12 }} /><span>{arkSeed !== undefined ? arkSeed : '??'}</span></div>
               </Popover>
-              <div className="jm-toggle-pill" title="有声视频">
+              <div className="jm-toggle-pill" title="????">
                 <SoundOutlined style={{ fontSize: 13 }} />
                 <Switch checked={arkGenerateAudio} onChange={setArkGenerateAudio} size="small" />
               </div>
-              <div className="jm-toggle-pill" title="联网搜索">
+              <div className="jm-toggle-pill" title="????">
                 <GlobalOutlined style={{ fontSize: 13 }} />
                 <Switch checked={arkWebSearch} onChange={setArkWebSearch} size="small" />
               </div>
@@ -544,18 +544,18 @@ const JimengVideoEditor: React.FC<JimengVideoEditorProps> = ({
           }}>@</div>
 
           {!['text2video', 'first_frame', 'first_last_frame'].includes(volcengineArkMode) && (
-            <Popover content={renderAddMenu()} trigger="click" placement="topLeft" arrow={false} destroyTooltipOnHide overlayInnerStyle={{ padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' }}>
+            <Popover content={renderAddMenu()} trigger="click" placement="topLeft" arrow={false} destroyOnHidden styles={{ container: { padding: 0, borderRadius: 12, background: '#1e1e2e', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 30px rgba(0,0,0,0.4)' } }}>
               <div className="jm-add-pill"><PlusOutlined /></div>
             </Popover>
           )}
         </div>
 
-        <button className={`jm-send-btn ${generatingCount > 0 ? 'generating' : ''}`} onClick={handleGenerate} title={generatingCount > 0 ? `${generatingCount} 个任务进行中` : '开始生成'}>
+        <button className={`jm-send-btn ${generatingCount > 0 ? 'generating' : ''}`} onClick={handleGenerate} title={generatingCount > 0 ? `${generatingCount} ??????` : '????'}>
           <SendOutlined style={{ transform: 'rotate(-45deg)', marginLeft: -2, marginTop: 2 }} />
         </button>
       </div>
 
-      <Image style={{ display: 'none' }} preview={{ visible: previewVisible, src: previewSrc, onVisibleChange: (v) => setPreviewVisible(v) }} />
+      <Image style={{ display: 'none' }} preview={{ open: previewVisible, src: previewSrc, onOpenChange: (v) => setPreviewVisible(v) }} />
     </div>
   );
 };

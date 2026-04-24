@@ -34,15 +34,22 @@ function Dropdown({
 
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
+      <span
+        role="button"
+        tabIndex={0}
         aria-haspopup="menu"
         aria-expanded={open}
+        onClick={onToggle}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
         className="nodrag contents"
       >
         {trigger}
-      </button>
+      </span>
       {open && (
         <div
           role="menu"
