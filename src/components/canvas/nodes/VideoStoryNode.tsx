@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useState, useRef, useCallback, useEffect, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import type { NodeProps } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import type { ShotColumn, StoryboardRow, VideoStoryNodeData } from "@/types/canvas";
@@ -208,6 +209,151 @@ function PlusHandle({
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
+function StoryboardTable({
+  rows,
+  shotColumns,
+  expandedView = false,
+}: {
+  rows: StoryboardRow[];
+  shotColumns: ShotColumn[];
+  expandedView?: boolean;
+}) {
+  return (
+    <table className="w-max min-w-full border-collapse">
+      <thead className="sticky top-0 z-[2]">
+        <tr style={{ background: "var(--Surface-Panel-background, #1a1a1a)" }}>
+          {shotColumns.map((col) => (
+            <th
+              key={col.field}
+              className="whitespace-nowrap border-b border-white/[0.08] px-3 py-2 text-left text-[11px] font-medium text-fg-muted/80"
+              scope="col"
+              title={col.description}
+            >
+              {col.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, idx) => (
+          <tr
+            key={`${row.shot_number}-${idx}`}
+            className="border-b border-white/[0.05] transition-colors hover:bg-white/[0.03]"
+          >
+            {shotColumns.map((col) => {
+              const isNum = NUMERIC_FIELDS.has(col.field);
+              const isShort = SHORT_FIELDS.has(col.field);
+              const isFrame = col.field === "frameUrl";
+
+              let minW = 80;
+              let maxW = 200;
+              if (isNum) { minW = 40; maxW = 70; }
+              else if (col.field === "shot_number") { minW = 36; maxW = 50; }
+              else if (isShort) { minW = 60; maxW = 120; }
+              else if (isFrame) { minW = 80; maxW = 100; }
+              else if (col.field === "visual_description" || col.field === "content") { minW = 140; maxW = expandedView ? 320 : 260; }
+              else if (col.field === "image_generation_prompt" || col.field === "video_motion_prompt") { minW = 160; maxW = expandedView ? 360 : 280; }
+              else if (col.field === "lighting") { minW = 80; maxW = expandedView ? 220 : 180; }
+
+              return (
+                <td
+                  key={col.field}
+                  className={`px-3 py-2.5 align-top text-[11px] leading-relaxed ${
+                    isNum ? "tabular-nums text-fg-default" : "text-fg-default"
+                  }`}
+                  style={{ minWidth: minW, maxWidth: maxW }}
+                >
+                  <div className={isFrame ? "" : "whitespace-pre-wrap break-words"}>
+                    <CellContent row={row} col={col} />
+                  </div>
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function VideoStoryExpandModal({
+  rows,
+  shotColumns,
+  onClose,
+}: {
+  rows: StoryboardRow[];
+  shotColumns: ShotColumn[];
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKey, true);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey, true);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  if (typeof window === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center"
+      style={{ zIndex: 1000, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <div
+        className="flex flex-col overflow-hidden rounded-xl shadow-2xl"
+        style={{
+          width: "min(85vw, 1800px)",
+          height: "min(80vh, 800px)",
+          background: "var(--Surface-Panel-background, #1a1a1a)",
+          border: "1px solid var(--canvas-node-border)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.08] px-4 py-2.5">
+          <FilmIcon className="h-4 w-4 text-fg-muted" />
+          <span className="text-[13px] font-medium text-fg-default">视频故事</span>
+          <div className="flex-1" />
+          <button
+            className="flex h-6 w-6 items-center justify-center rounded text-fg-muted transition-colors hover:bg-white/10 hover:text-fg-default"
+            onClick={onClose}
+            title="收起"
+          >
+            <CloseIcon />
+          </button>
+        </div>
+
+        {/* Scrollable table */}
+        <div className="tiny-scrollbar min-h-0 flex-1 overflow-auto">
+          <StoryboardTable rows={rows} shotColumns={shotColumns} expandedView />
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function VideoStoryNodeInner({ id, data, selected }: NodeProps & { data: VideoStoryNodeData }) {
   const w = data.nodeWidth ?? 1000;
   const h = data.nodeHeight ?? 450;
@@ -216,8 +362,6 @@ function VideoStoryNodeInner({ id, data, selected }: NodeProps & { data: VideoSt
   const [expanded, setExpanded] = useState(false);
   const leftIconRef = useRef<HTMLDivElement>(null);
   const rightIconRef = useRef<HTMLDivElement>(null);
-
-  const actualH = expanded ? h + 250 : h;
 
   return (
     <div
@@ -230,7 +374,7 @@ function VideoStoryNodeInner({ id, data, selected }: NodeProps & { data: VideoSt
         className="overflow-hidden rounded-xl"
         style={{
           width: w,
-          height: actualH,
+          height: h,
           border: "1px solid var(--canvas-node-border)",
           outline: selected ? "2px solid var(--canvas-node-border-selected)" : "none",
           outlineOffset: -1,
@@ -251,8 +395,8 @@ function VideoStoryNodeInner({ id, data, selected }: NodeProps & { data: VideoSt
               <div className="flex-1" />
               <button
                 className="nodrag flex h-6 w-6 items-center justify-center rounded text-fg-muted transition-colors hover:bg-white/10 hover:text-fg-default"
-                onClick={() => setExpanded(!expanded)}
-                title={expanded ? "收起" : "展开"}
+                onClick={() => setExpanded(true)}
+                title="展开"
               >
                 <ExpandIcon />
               </button>
@@ -260,66 +404,21 @@ function VideoStoryNodeInner({ id, data, selected }: NodeProps & { data: VideoSt
 
             {/* Scrollable table */}
             <div className="nodrag nowheel min-h-0 flex-1 overflow-auto">
-              <table className="w-max min-w-full border-collapse">
-                <thead className="sticky top-0 z-[2]">
-                  <tr style={{ background: "var(--Surface-Panel-background, #1a1a1a)" }}>
-                    {shotColumns.map((col) => (
-                      <th
-                        key={col.field}
-                        className="whitespace-nowrap border-b border-white/[0.08] px-3 py-2 text-left text-[11px] font-medium text-fg-muted/80"
-                        scope="col"
-                        title={col.description}
-                      >
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, idx) => (
-                    <tr
-                      key={`${row.shot_number}-${idx}`}
-                      className="border-b border-white/[0.05] transition-colors hover:bg-white/[0.03]"
-                    >
-                      {shotColumns.map((col) => {
-                        const isNum = NUMERIC_FIELDS.has(col.field);
-                        const isShort = SHORT_FIELDS.has(col.field);
-                        const isFrame = col.field === "frameUrl";
-
-                        let minW = 80;
-                        let maxW = 200;
-                        if (isNum) { minW = 40; maxW = 70; }
-                        else if (col.field === "shot_number") { minW = 36; maxW = 50; }
-                        else if (isShort) { minW = 60; maxW = 120; }
-                        else if (isFrame) { minW = 80; maxW = 100; }
-                        else if (col.field === "visual_description" || col.field === "content") { minW = 140; maxW = 260; }
-                        else if (col.field === "image_generation_prompt" || col.field === "video_motion_prompt") { minW = 160; maxW = 280; }
-                        else if (col.field === "lighting") { minW = 80; maxW = 180; }
-
-                        return (
-                          <td
-                            key={col.field}
-                            className={`px-3 py-2.5 align-top text-[11px] leading-relaxed ${
-                              isNum ? "tabular-nums text-fg-default" : "text-fg-default"
-                            }`}
-                            style={{ minWidth: minW, maxWidth: maxW }}
-                          >
-                            <div className={isFrame ? "" : "whitespace-pre-wrap break-words"}>
-                              <CellContent row={row} col={col} />
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <StoryboardTable rows={rows} shotColumns={shotColumns} />
             </div>
           </div>
         )}
       </div>
 
       <PlusHandle side="right" type="source" id="source" iconWrapRef={rightIconRef} />
+
+      {expanded && (
+        <VideoStoryExpandModal
+          rows={rows}
+          shotColumns={shotColumns}
+          onClose={() => setExpanded(false)}
+        />
+      )}
     </div>
   );
 }

@@ -12,11 +12,17 @@ import {
 } from "@xyflow/react";
 import type { CanvasNode, CanvasEdge, CanvasNodeType } from "@/types/canvas";
 import { seedNodes, seedEdges } from "@/data/seed-nodes";
+import {
+  pushHistorySnapshot,
+  pushSnapshotDebouncedForMove,
+} from "@/lib/canvas-history";
 
 let _nodeCounter = 100;
 function nextNodeId() { return `drop-${++_nodeCounter}`; }
 
-function createDefaultNodeData(type: CanvasNodeType): { data: CanvasNode["data"]; width: number; height: number } {
+export function createDefaultNodeData(
+  type: CanvasNodeType,
+): { data: CanvasNode["data"]; width: number; height: number } {
   switch (type) {
     case "text":
       return {
@@ -78,11 +84,20 @@ interface CanvasState {
   setViewport: (vp: Viewport) => void;
   setSelectedNodeIds: (ids: string[]) => void;
   addNode: (node: CanvasNode) => void;
+  addNodeOfType: (
+    type: CanvasNodeType,
+    position?: { x: number; y: number },
+  ) => string;
   setNodes: (nodes: CanvasNode[]) => void;
   addEdgeDirectly: (edge: CanvasEdge) => void;
   updateNodeData: (id: string, data: Partial<Record<string, unknown>>) => void;
+  renameNode: (id: string, name: string) => void;
   deleteNode: (id: string) => void;
   deleteEdge: (id: string) => void;
+  pasteNodeFromClipboard: (
+    payload: CanvasNode,
+    position?: { x: number; y: number },
+  ) => void;
   reconnectEdge: OnReconnect;
   toggleMinimap: () => void;
   toggleSnapToGrid: () => void;
@@ -102,6 +117,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   snapToGrid: false,
 
   onNodesChange: (changes) => {
+    let pushedMove = false;
+    let pushedDelete = false;
+    for (const c of changes) {
+      if (c.type === "position" && !pushedMove) {
+        pushSnapshotDebouncedForMove();
+        pushedMove = true;
+      } else if (c.type === "remove" && !pushedDelete) {
+        pushHistorySnapshot();
+        pushedDelete = true;
+      }
+    }
     set({ nodes: applyNodeChanges(changes, get().nodes) });
   },
 
@@ -110,6 +136,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   onConnect: (connection) => {
+    pushHistorySnapshot();
     const newEdge: CanvasEdge = {
       ...connection,
       id: `edge-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -124,7 +151,34 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   setSelectedNodeIds: (ids) => set({ selectedNodeIds: ids }),
 
-  addNode: (node) => set({ nodes: [...get().nodes, node] }),
+  addNode: (node) => {
+    if (node.type !== "temp") pushHistorySnapshot();
+    set({ nodes: [...get().nodes, node] });
+  },
+
+  addNodeOfType: (type, position) => {
+    pushHistorySnapshot();
+    const { data, width, height } = createDefaultNodeData(type);
+    const id = nextNodeId();
+    const pos = position ?? {
+      x: 200 + Math.random() * 400,
+      y: 200 + Math.random() * 400,
+    };
+    const node: CanvasNode = {
+      id,
+      type,
+      position: pos,
+      data,
+      width,
+      height,
+      selected: true,
+    };
+    const cleared = get().nodes.map((n) =>
+      n.selected ? { ...n, selected: false } : n,
+    );
+    set({ nodes: [...cleared, node], selectedNodeIds: [id] });
+    return id;
+  },
 
   setNodes: (nodes) => set({ nodes }),
 
@@ -137,13 +191,54 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       ),
     }),
 
-  deleteNode: (id) =>
+  renameNode: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    set({
+      nodes: get().nodes.map((n) =>
+        n.id === id
+          ? {
+              ...n,
+              data: { ...n.data, name: trimmed, label: trimmed } as typeof n.data,
+            }
+          : n,
+      ),
+    });
+  },
+
+  pasteNodeFromClipboard: (payload, position) => {
+    const id = `n-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const base = position ?? {
+      x: payload.position.x + 24,
+      y: payload.position.y + 24,
+    };
+    const pasted: CanvasNode = {
+      ...payload,
+      id,
+      position: base,
+      selected: true,
+      parentId: undefined,
+      extent: undefined,
+      data: structuredClone(payload.data),
+    };
+    const nodes = get().nodes.map((n) =>
+      n.selected ? { ...n, selected: false } : n,
+    );
+    set({ nodes: [...nodes, pasted], selectedNodeIds: [id] });
+  },
+
+  deleteNode: (id) => {
+    pushHistorySnapshot();
     set({
       nodes: get().nodes.filter((n) => n.id !== id),
       edges: get().edges.filter((e) => e.source !== id && e.target !== id),
-    }),
+    });
+  },
 
-  deleteEdge: (id) => set({ edges: get().edges.filter((e) => e.id !== id) }),
+  deleteEdge: (id) => {
+    pushHistorySnapshot();
+    set({ edges: get().edges.filter((e) => e.id !== id) });
+  },
 
   reconnectEdge: (oldEdge, newConnection) => {
     set({ edges: rfReconnectEdge(oldEdge, newConnection, get().edges) });
@@ -156,6 +251,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   duplicateNode: (id) => {
     const original = get().nodes.find((n) => n.id === id);
     if (!original) return;
+    pushHistorySnapshot();
     const newId = `n-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const copy: CanvasNode = {
       ...original,
@@ -176,6 +272,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       (n) => nodeIds.includes(n.id) && n.type !== "group"
     );
     if (targets.length < 2) return;
+    pushHistorySnapshot();
 
     const PADDING = 40;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -231,6 +328,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { nodes } = get();
     const group = nodes.find((n) => n.id === groupId);
     if (!group || group.type !== "group") return;
+    pushHistorySnapshot();
 
     const childIds: string[] = [];
     const updated = nodes
@@ -257,6 +355,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
     const { nodes } = get();
     const targets = nodes.filter((n) => nodeIds.includes(n.id));
     if (targets.length < 2) return;
+    pushHistorySnapshot();
 
     const GAP = 40;
     const anchor = { x: targets[0].position.x, y: targets[0].position.y };
@@ -313,6 +412,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   addNodeAndConnect: (type, position, source) => {
+    pushHistorySnapshot();
     const { data, width, height } = createDefaultNodeData(type);
     const id = nextNodeId();
     const newNode: CanvasNode = {

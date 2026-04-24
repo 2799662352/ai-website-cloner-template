@@ -1,24 +1,39 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { NodeResizer, type NodeProps } from "@xyflow/react";
 import { useCanvasStore } from "@/store/canvas-store";
 import type { GroupNodeData } from "@/types/canvas";
 
-// Minimum group dimensions — small enough to collapse around one node but not
-// vanish into a dot. Matches LibTV's lower bound.
 const MIN_GROUP_WIDTH = 120;
 const MIN_GROUP_HEIGHT = 80;
 
 function GroupNodeInner({ id, data, selected }: NodeProps & { data: GroupNodeData }) {
   const childCount = useCanvasStore(
-    (s) => s.nodes.filter((n) => n.parentId === id).length
+    (s) => s.nodes.filter((n) => n.parentId === id).length,
   );
 
+  // Apply per-group color (B2: tinted border + translucent fill) by mutating
+  // the React-Flow-rendered .react-flow__node-group element. This survives
+  // re-renders because we re-apply on every commit driven by data.groupColor.
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = wrapperRef.current?.closest<HTMLElement>(
+      ".react-flow__node-group",
+    );
+    if (!el) return;
+    const color = data.groupColor;
+    if (color) {
+      el.style.borderColor = color;
+      el.style.background = `${color}1F`;
+    } else {
+      el.style.borderColor = "";
+      el.style.background = "";
+    }
+  }, [data.groupColor]);
+
   return (
-    <>
-      {/* LibTV-style resizer: 4 edge lines + 4 corner handles, only when selected.
-          Child node positions are NOT scaled — the container just grows/shrinks. */}
+    <div ref={wrapperRef} style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
       <NodeResizer
         isVisible={selected}
         minWidth={MIN_GROUP_WIDTH}
@@ -34,7 +49,7 @@ function GroupNodeInner({ id, data, selected }: NodeProps & { data: GroupNodeDat
           {data.label || `分组 ${childCount} 个节点`}
         </span>
       </div>
-    </>
+    </div>
   );
 }
 

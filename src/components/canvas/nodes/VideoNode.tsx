@@ -551,7 +551,7 @@ function VideoNodeInner({ id, data, selected }: NodeProps & { data: VideoNodeDat
     <NodeShell
       nodeId={id}
       name={data.name}
-      resolution={hasVideo ? `${data.contentWidth} × ${data.contentHeight}` : undefined}
+      resolution={data.contentWidth && data.contentHeight ? `${data.contentWidth} × ${data.contentHeight}` : undefined}
       icon={<VideoIcon />}
       selected={selected}
       width={w}

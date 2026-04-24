@@ -35,6 +35,8 @@ import { CustomEdge } from "./edges/CustomEdge";
 import { CanvasContextMenu, NodeContextMenu, MultiSelectContextMenu } from "./ContextMenu";
 import { MultiSelectToolbar } from "./MultiSelectToolbar";
 import { ConnectionDropMenu } from "./ConnectionDropMenu";
+import { ToastHost } from "@/components/ui/Toast";
+import { useCanvasShortcuts } from "@/hooks/useCanvasShortcuts";
 
 const nodeTypes: NodeTypes = {
   image: ImageNodeComponent,
@@ -83,6 +85,8 @@ export function CanvasArea() {
   } = useCanvasStore();
 
   const isMultiSelect = selectedNodeIds.length >= 2;
+
+  useCanvasShortcuts();
 
   const reconnectSuccessful = useRef(false);
   const connectingFrom = useRef<{ nodeId: string; handleId: string } | null>(null);
@@ -380,6 +384,7 @@ export function CanvasArea() {
         />
       ) : null}
       <MultiSelectToolbar />
+      <ToastHost />
       {connectionDrop && (
         <ConnectionDropMenu
           screenX={connectionDrop.screenX}

@@ -195,17 +195,6 @@ function ColorPicker({ groupId, currentColor }: { groupId: string; currentColor?
 
   const handlePick = (color: string | null) => {
     updateNodeData(groupId, { groupColor: color ?? undefined });
-
-    const el = document.querySelector<HTMLElement>(`.react-flow__node[data-id="${groupId}"]`);
-    if (el) {
-      if (color) {
-        el.style.borderColor = color;
-        el.style.background = `${color}18`;
-      } else {
-        el.style.borderColor = "";
-        el.style.background = "";
-      }
-    }
     close();
   };
 

@@ -5,11 +5,13 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useState,
   type ReactNode,
   type RefObject,
 } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { IconImage } from "../icons";
+import { useCanvasStore } from "@/store/canvas-store";
 
 /**
  * LibTV-style "+" handle.
@@ -184,7 +186,86 @@ interface NodeShellProps {
   contextToolbar?: ReactNode;
 }
 
+/**
+ * Editable node title — double-click to enter edit mode, blur or Enter to save,
+ * Escape to cancel. Matches LibTV's behavior 1:1.
+ */
+function EditableNodeName({
+  nodeId,
+  name,
+  width,
+}: {
+  nodeId: string;
+  name: string;
+  width: number;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(name);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const renameNode = useCanvasStore((s) => s.renameNode);
+
+  useEffect(() => {
+    if (!editing) setDraft(name);
+  }, [name, editing]);
+
+  useEffect(() => {
+    if (!editing) return;
+    const id = window.setTimeout(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [editing]);
+
+  const commit = () => {
+    const next = draft.trim();
+    if (next && next !== name) renameNode(nodeId, next);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commit();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setDraft(name);
+            setEditing(false);
+          }
+          e.stopPropagation();
+        }}
+        className="nodrag w-full min-w-0 rounded-sm bg-white/8 px-1 text-[13px] text-fg-default outline-none ring-1 ring-blue-500/60 focus:bg-white/12"
+        style={{ maxWidth: Math.max(80, width - 80) }}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="cursor-text truncate text-[13px]"
+      title={`${name}（双击重命名）`}
+      style={{ maxWidth: Math.max(80, width - 80) }}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        setEditing(true);
+      }}
+    >
+      {name}
+    </span>
+  );
+}
+
 function NodeShellInner({
+  nodeId,
   name,
   resolution,
   icon,
@@ -213,16 +294,10 @@ function NodeShellInner({
           <span className="flex shrink-0 items-center">
             {icon ?? <IconImage className="h-3.5 w-3.5" />}
           </span>
-          <span
-            className="cursor-text truncate text-[13px]"
-            title={name}
-            style={{ maxWidth: Math.max(80, width - 80) }}
-          >
-            {name}
-          </span>
+          <EditableNodeName nodeId={nodeId} name={name} width={width} />
         </div>
         {resolution && (
-          <span className="shrink-0 whitespace-nowrap text-[12px] text-fg-muted/70">
+          <span className="shrink-0 whitespace-nowrap text-[11px] tabular-nums text-fg-muted/70 opacity-80">
             {resolution}
           </span>
         )}
